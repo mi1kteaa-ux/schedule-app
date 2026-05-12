@@ -155,9 +155,9 @@ export default function PublicPage() {
             <div
               key={i}
               className={`py-1.5 sm:py-2 text-center text-xs sm:text-sm font-medium border-b border-slate-200 ${
-                i === 0
+                i === 6
                   ? "text-red-500 bg-red-50"
-                  : i === 6
+                  : i === 5
                   ? "text-blue-500 bg-blue-50"
                   : "text-slate-500 bg-slate-50"
               }`}
@@ -204,9 +204,9 @@ export default function PublicPage() {
                   className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 ${
                     isToday
                       ? "bg-slate-800 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center mx-auto text-[10px] sm:text-sm"
-                      : dayOfWeek === 0
-                      ? "text-red-500 text-center"
                       : dayOfWeek === 6
+                      ? "text-red-500 text-center"
+                      : dayOfWeek === 5
                       ? "text-blue-500 text-center"
                       : "text-slate-700 text-center"
                   }`}

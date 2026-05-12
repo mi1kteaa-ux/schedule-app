@@ -3,7 +3,8 @@ export function getDaysInMonth(year: number, month: number): number {
 }
 
 export function getFirstDayOfMonth(year: number, month: number): number {
-  return new Date(year, month, 1).getDay();
+  const day = new Date(year, month, 1).getDay();
+  return (day + 6) % 7;
 }
 
 export function formatDate(dateStr: string): string {
@@ -21,7 +22,7 @@ export function toDateString(year: number, month: number, day: number): string {
   return `${year}-${m}-${d}`;
 }
 
-const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
 
 export function getDayLabel(dayIndex: number): string {
   return DAY_LABELS[dayIndex];
