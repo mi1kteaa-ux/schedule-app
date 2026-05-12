@@ -244,28 +244,36 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
-      <header className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">
-          スケジュール管理
-        </h1>
+    <main className="flex-1 max-w-4xl mx-auto w-full px-3 sm:px-4 py-6 sm:py-8">
+      <header className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
+            スケジュール管理
+          </h1>
+          <a
+            href="/"
+            className="px-3 py-1.5 text-xs sm:text-sm bg-slate-100 rounded-lg active:bg-slate-200 sm:hover:bg-slate-200 transition-colors text-slate-600 sm:hidden"
+          >
+            閲覧ページ →
+          </a>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => {
               setShowSettings(!showSettings);
               if (!showSettings) setSettingsTab("site");
             }}
-            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm rounded-lg transition-colors ${
               showSettings
                 ? "bg-slate-800 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                : "bg-slate-100 text-slate-600 active:bg-slate-200 sm:hover:bg-slate-200"
             }`}
           >
             設定
           </button>
           <a
             href="/"
-            className="px-4 py-2 text-sm bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors text-slate-600"
+            className="hidden sm:inline-block px-4 py-2 text-sm bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors text-slate-600"
           >
             閲覧ページ →
           </a>
@@ -277,7 +285,7 @@ export default function AdminPage() {
                 setForm({ ...EMPTY_FORM });
               }
             }}
-            className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm bg-slate-800 text-white rounded-lg active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"
           >
             {showForm ? "閉じる" : "＋ 新規追加"}
           </button>
@@ -286,32 +294,32 @@ export default function AdminPage() {
 
       {/* Settings panel */}
       {showSettings && settings && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-8 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 sm:mb-8 overflow-hidden">
           {/* Tabs */}
           <div className="flex border-b border-slate-200">
             <button
               onClick={() => setSettingsTab("site")}
-              className={`px-6 py-3 text-sm font-medium transition-colors ${
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
                 settingsTab === "site"
                   ? "text-slate-800 border-b-2 border-slate-800"
-                  : "text-slate-500 hover:text-slate-700"
+                  : "text-slate-500 active:text-slate-700"
               }`}
             >
               サイト情報
             </button>
             <button
               onClick={() => setSettingsTab("categories")}
-              className={`px-6 py-3 text-sm font-medium transition-colors ${
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
                 settingsTab === "categories"
                   ? "text-slate-800 border-b-2 border-slate-800"
-                  : "text-slate-500 hover:text-slate-700"
+                  : "text-slate-500 active:text-slate-700"
               }`}
             >
               カテゴリ設定
             </button>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* Site info tab */}
             {settingsTab === "site" && (
               <form
@@ -385,127 +393,120 @@ export default function AdminPage() {
                   {editCategories.map((cat, idx) => (
                     <div
                       key={cat.id}
-                      className="flex items-center gap-3 bg-slate-50 rounded-lg p-3"
+                      className="bg-slate-50 rounded-lg p-3"
                     >
-                      {/* Reorder buttons */}
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        {/* Reorder buttons */}
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => moveCategoryUp(idx)}
+                            className="text-slate-400 active:text-slate-600 sm:hover:text-slate-600 text-xs leading-none"
+                            disabled={idx === 0}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveCategoryDown(idx)}
+                            className="text-slate-400 active:text-slate-600 sm:hover:text-slate-600 text-xs leading-none"
+                            disabled={idx === editCategories.length - 1}
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        {/* Color preview & picker */}
+                        <div className="relative shrink-0">
+                          <div
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg cursor-pointer border border-slate-200"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                          <input
+                            type="color"
+                            value={cat.color}
+                            onChange={(e) =>
+                              updateCategoryField(cat.id, "color", e.target.value)
+                            }
+                            className="absolute inset-0 opacity-0 cursor-pointer w-7 h-7 sm:w-8 sm:h-8"
+                          />
+                        </div>
+
+                        {/* Label input */}
+                        <input
+                          type="text"
+                          value={cat.label}
+                          onChange={(e) =>
+                            updateCategoryField(cat.id, "label", e.target.value)
+                          }
+                          className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                        />
+
+                        {/* Preview badge */}
+                        <span
+                          className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full text-white shrink-0"
+                          style={{ backgroundColor: cat.color }}
+                        >
+                          {cat.label || "---"}
+                        </span>
+
+                        {/* Delete */}
                         <button
                           type="button"
-                          onClick={() => moveCategoryUp(idx)}
-                          className="text-slate-400 hover:text-slate-600 text-xs leading-none"
-                          disabled={idx === 0}
+                          onClick={() => removeCategory(cat.id)}
+                          className="text-red-400 active:text-red-600 sm:hover:text-red-600 text-xs shrink-0"
                         >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveCategoryDown(idx)}
-                          className="text-slate-400 hover:text-slate-600 text-xs leading-none"
-                          disabled={idx === editCategories.length - 1}
-                        >
-                          ▼
+                          削除
                         </button>
                       </div>
 
-                      {/* Color preview & picker */}
-                      <div className="relative">
-                        <div
-                          className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200"
-                          style={{ backgroundColor: cat.color }}
-                        />
-                        <input
-                          type="color"
+                      {/* Color presets dropdown - second row on mobile */}
+                      <div className="mt-2 ml-7 sm:ml-8">
+                        <select
                           value={cat.color}
                           onChange={(e) =>
                             updateCategoryField(cat.id, "color", e.target.value)
                           }
-                          className="absolute inset-0 opacity-0 cursor-pointer w-8 h-8"
-                        />
+                          className="px-2 py-1 border border-slate-300 rounded text-xs sm:text-sm bg-white w-full sm:w-auto"
+                        >
+                          {COLOR_PRESETS.map((p) => (
+                            <option key={p.color} value={p.color}>
+                              {p.name}
+                            </option>
+                          ))}
+                          {!COLOR_PRESETS.find((p) => p.color === cat.color) && (
+                            <option value={cat.color}>カスタム</option>
+                          )}
+                        </select>
                       </div>
-
-                      {/* Color presets dropdown */}
-                      <select
-                        value={cat.color}
-                        onChange={(e) =>
-                          updateCategoryField(cat.id, "color", e.target.value)
-                        }
-                        className="px-2 py-1 border border-slate-300 rounded text-sm bg-white"
-                      >
-                        {COLOR_PRESETS.map((p) => (
-                          <option key={p.color} value={p.color}>
-                            {p.name}
-                          </option>
-                        ))}
-                        {!COLOR_PRESETS.find((p) => p.color === cat.color) && (
-                          <option value={cat.color}>カスタム</option>
-                        )}
-                      </select>
-
-                      {/* Label input */}
-                      <input
-                        type="text"
-                        value={cat.label}
-                        onChange={(e) =>
-                          updateCategoryField(cat.id, "label", e.target.value)
-                        }
-                        className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                      />
-
-                      {/* Preview badge */}
-                      <span
-                        className="text-xs font-medium px-2 py-0.5 rounded-full text-white shrink-0"
-                        style={{ backgroundColor: cat.color }}
-                      >
-                        {cat.label || "---"}
-                      </span>
-
-                      {/* Delete */}
-                      <button
-                        type="button"
-                        onClick={() => removeCategory(cat.id)}
-                        className="text-red-400 hover:text-red-600 text-sm shrink-0"
-                      >
-                        削除
-                      </button>
                     </div>
                   ))}
                 </div>
 
                 {/* Add new category */}
-                <div className="bg-slate-50 rounded-lg p-4 mb-4">
-                  <h4 className="text-sm font-medium text-slate-600 mb-3">
+                <div className="bg-slate-50 rounded-lg p-3 sm:p-4 mb-4">
+                  <h4 className="text-xs sm:text-sm font-medium text-slate-600 mb-2 sm:mb-3">
                     カテゴリを追加
                   </h4>
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                    <div className="relative shrink-0">
                       <div
-                        className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg cursor-pointer border border-slate-200"
                         style={{ backgroundColor: newCatColor }}
                       />
                       <input
                         type="color"
                         value={newCatColor}
                         onChange={(e) => setNewCatColor(e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-8 h-8"
+                        className="absolute inset-0 opacity-0 cursor-pointer w-7 h-7 sm:w-8 sm:h-8"
                       />
                     </div>
-                    <select
-                      value={newCatColor}
-                      onChange={(e) => setNewCatColor(e.target.value)}
-                      className="px-2 py-1 border border-slate-300 rounded text-sm bg-white"
-                    >
-                      {COLOR_PRESETS.map((p) => (
-                        <option key={p.color} value={p.color}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
                     <input
                       type="text"
                       value={newCatLabel}
                       onChange={(e) => setNewCatLabel(e.target.value)}
                       placeholder="カテゴリ名"
-                      className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -516,29 +517,42 @@ export default function AdminPage() {
                     <button
                       type="button"
                       onClick={addCategory}
-                      className="px-4 py-1.5 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-600 transition-colors"
+                      className="px-3 sm:px-4 py-1.5 bg-slate-700 text-white rounded-lg text-xs sm:text-sm active:bg-slate-600 sm:hover:bg-slate-600 transition-colors shrink-0"
                     >
                       追加
                     </button>
                   </div>
+                  <div className="ml-9 sm:ml-11">
+                    <select
+                      value={newCatColor}
+                      onChange={(e) => setNewCatColor(e.target.value)}
+                      className="px-2 py-1 border border-slate-300 rounded text-xs sm:text-sm bg-white w-full sm:w-auto"
+                    >
+                      {COLOR_PRESETS.map((p) => (
+                        <option key={p.color} value={p.color}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={async () => {
                       await saveSettings({ categories: editCategories });
                       setShowSettings(false);
                     }}
-                    className="px-6 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors"
+                    className="px-4 sm:px-6 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"
                   >
                     保存
                   </button>
                   <button
                     type="button"
                     onClick={resetToDefaults}
-                    className="px-6 py-2 bg-slate-200 text-slate-600 rounded-lg font-medium hover:bg-slate-300 transition-colors"
+                    className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors"
                   >
                     プリセットに戻す
                   </button>
@@ -548,7 +562,7 @@ export default function AdminPage() {
                       setEditCategories(settings?.categories ?? []);
                       setShowSettings(false);
                     }}
-                    className="px-6 py-2 bg-slate-200 text-slate-600 rounded-lg font-medium hover:bg-slate-300 transition-colors"
+                    className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors"
                   >
                     キャンセル
                   </button>
@@ -563,9 +577,9 @@ export default function AdminPage() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8"
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8"
         >
-          <h2 className="text-lg font-bold text-slate-700 mb-4">
+          <h2 className="text-base sm:text-lg font-bold text-slate-700 mb-3 sm:mb-4">
             {editingId ? "予定を編集" : "新しい予定を追加"}
           </h2>
 
@@ -694,76 +708,78 @@ export default function AdminPage() {
       )}
 
       {/* Schedule list */}
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {schedules.length === 0 ? (
-          <p className="text-slate-400 text-center py-12">
+          <p className="text-slate-400 text-center py-8 sm:py-12 text-sm">
             予定がまだ登録されていません
           </p>
         ) : (
           schedules.map((s) => (
             <div
               key={s.id}
-              className={`bg-white rounded-lg shadow-sm border border-slate-200 p-4 flex items-center gap-4 ${
+              className={`bg-white rounded-lg shadow-sm border border-slate-200 p-3 sm:p-4 ${
                 !s.published ? "opacity-60" : ""
               }`}
             >
-              <div className="text-center min-w-[60px]">
-                <div className="text-xl font-bold text-slate-700">
-                  {new Date(s.date + "T00:00:00").getDate()}
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="text-center min-w-[44px] sm:min-w-[60px]">
+                  <div className="text-lg sm:text-xl font-bold text-slate-700">
+                    {new Date(s.date + "T00:00:00").getDate()}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-slate-400">
+                    {new Date(s.date + "T00:00:00").getFullYear()}/
+                    {new Date(s.date + "T00:00:00").getMonth() + 1}
+                  </div>
                 </div>
-                <div className="text-xs text-slate-400">
-                  {new Date(s.date + "T00:00:00").getFullYear()}/
-                  {new Date(s.date + "T00:00:00").getMonth() + 1}
-                </div>
-              </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="text-xs font-medium px-2 py-0.5 rounded-full text-white"
-                    style={{ backgroundColor: getCategoryColor(s.category) }}
-                  >
-                    {getCategoryLabel(s.category)}
-                  </span>
-                  {s.time && (
-                    <span className="text-xs text-slate-500">{s.time}</span>
-                  )}
-                  {!s.published && (
-                    <span className="text-xs text-orange-500 font-medium">
-                      非公開
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                    <span
+                      className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: getCategoryColor(s.category) }}
+                    >
+                      {getCategoryLabel(s.category)}
                     </span>
+                    {s.time && (
+                      <span className="text-[10px] sm:text-xs text-slate-500">{s.time}</span>
+                    )}
+                    {!s.published && (
+                      <span className="text-[10px] sm:text-xs text-orange-500 font-medium">
+                        非公開
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                    {s.title}
+                  </h3>
+                  {s.description && (
+                    <p className="text-xs sm:text-sm text-slate-500 truncate">
+                      {s.description}
+                    </p>
                   )}
                 </div>
-                <h3 className="font-bold text-slate-800 truncate">
-                  {s.title}
-                </h3>
-                {s.description && (
-                  <p className="text-sm text-slate-500 truncate">
-                    {s.description}
-                  </p>
-                )}
               </div>
 
-              <div className="flex gap-1 shrink-0">
+              <div className="flex gap-1 mt-2 sm:mt-0 sm:justify-end pl-[56px] sm:pl-0">
                 <button
                   onClick={() => handleTogglePublish(s)}
-                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs rounded-lg transition-colors ${
                     s.published
-                      ? "bg-green-100 text-green-700 hover:bg-green-200"
-                      : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                      ? "bg-green-100 text-green-700 active:bg-green-200 sm:hover:bg-green-200"
+                      : "bg-orange-100 text-orange-700 active:bg-orange-200 sm:hover:bg-orange-200"
                   }`}
                 >
                   {s.published ? "公開中" : "非公開"}
                 </button>
                 <button
                   onClick={() => handleEdit(s)}
-                  className="px-3 py-1.5 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs bg-slate-100 text-slate-600 rounded-lg active:bg-slate-200 sm:hover:bg-slate-200 transition-colors"
                 >
                   編集
                 </button>
                 <button
                   onClick={() => handleDelete(s.id)}
-                  className="px-3 py-1.5 text-xs bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs bg-red-100 text-red-600 rounded-lg active:bg-red-200 sm:hover:bg-red-200 transition-colors"
                 >
                   削除
                 </button>
