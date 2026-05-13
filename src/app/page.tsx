@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Schedule, SiteSettings, CategoryConfig } from "@/lib/types";
 import SnsIconsBar from "@/components/SnsIcons";
+import html2canvas from "html2canvas-pro";
 import {
   getDaysInMonth,
   getFirstDayOfMonth,
@@ -18,9 +19,31 @@ export default function PublicPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [saving, setSaving] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+
+  const saveAsImage = useCallback(async () => {
+    if (!listRef.current) return;
+    setSaving(true);
+    try {
+      const canvas = await html2canvas(listRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
+      const link = document.createElement("a");
+      link.download = `schedule_${year}${String(month + 1).padStart(2, "0")}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      alert("画像の保存に失敗しました");
+    } finally {
+      setSaving(false);
+    }
+  }, [year, month]);
   const categories = settings?.categories ?? [];
 
   function getCategoryConfig(id: string): CategoryConfig | undefined {
@@ -374,7 +397,8 @@ export default function PublicPage() {
 
       {/* List view */}
       {viewMode === "list" && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <>
+        <div ref={listRef} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           {/* List header */}
           <div className="bg-rose-400 text-white text-center py-2 sm:py-3">
             <h2 className="text-base sm:text-xl font-bold">{getMonthName(year, month)}</h2>
@@ -448,6 +472,21 @@ export default function PublicPage() {
             ));
           })}
         </div>
+
+        {/* Save as image button */}
+        <div className="mt-3 flex justify-center">
+          <button
+            onClick={saveAsImage}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            {saving ? "保存中..." : "画像として保存"}
+          </button>
+        </div>
+        </>
       )}
 
       {/* Upcoming list */}
