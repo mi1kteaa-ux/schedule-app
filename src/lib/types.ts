@@ -19,11 +19,42 @@ export interface Schedule {
 
 export type ScheduleInput = Omit<Schedule, "id" | "createdAt" | "updatedAt">;
 
+export interface SnsLinks {
+  x: string;
+  youtube: string;
+  instagram: string;
+  tiktok: string;
+  twitch: string;
+  facebook: string;
+  website: string;
+}
+
+export const EMPTY_SNS_LINKS: SnsLinks = {
+  x: "",
+  youtube: "",
+  instagram: "",
+  tiktok: "",
+  twitch: "",
+  facebook: "",
+  website: "",
+};
+
+export const SNS_DEFINITIONS: { key: keyof SnsLinks; label: string; placeholder: string }[] = [
+  { key: "x", label: "X (Twitter)", placeholder: "https://x.com/username" },
+  { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/@channel" },
+  { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/username" },
+  { key: "tiktok", label: "TikTok", placeholder: "https://tiktok.com/@username" },
+  { key: "twitch", label: "Twitch", placeholder: "https://twitch.tv/username" },
+  { key: "facebook", label: "Facebook", placeholder: "https://facebook.com/username" },
+  { key: "website", label: "Webサイト", placeholder: "https://example.com" },
+];
+
 export interface SiteSettings {
   title: string;
   subtitle: string;
   profileImage: string;
   headerImage: string;
+  snsLinks: SnsLinks;
   categories: CategoryConfig[];
 }
 

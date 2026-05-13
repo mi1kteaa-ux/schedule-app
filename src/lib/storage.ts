@@ -1,12 +1,12 @@
 import { getSupabase, getAdminClient } from "./supabase";
-import { Schedule, ScheduleInput, SiteSettings, DEFAULT_CATEGORIES } from "./types";
+import { Schedule, ScheduleInput, SiteSettings, DEFAULT_CATEGORIES, EMPTY_SNS_LINKS } from "./types";
 
 // --- Settings ---
 
 export async function getSettings(): Promise<SiteSettings> {
   const { data } = await getSupabase()
     .from("site_settings")
-    .select("title, subtitle, profile_image, header_image, categories")
+    .select("title, subtitle, profile_image, header_image, sns_links, categories")
     .eq("id", 1)
     .single();
 
@@ -16,6 +16,7 @@ export async function getSettings(): Promise<SiteSettings> {
       subtitle: "出演・イベント予定",
       profileImage: "",
       headerImage: "",
+      snsLinks: { ...EMPTY_SNS_LINKS },
       categories: DEFAULT_CATEGORIES,
     };
   }
@@ -24,6 +25,7 @@ export async function getSettings(): Promise<SiteSettings> {
     subtitle: data.subtitle,
     profileImage: data.profile_image ?? "",
     headerImage: data.header_image ?? "",
+    snsLinks: data.sns_links ? { ...EMPTY_SNS_LINKS, ...data.sns_links } : { ...EMPTY_SNS_LINKS },
     categories: data.categories ?? DEFAULT_CATEGORIES,
   };
 }
@@ -37,6 +39,7 @@ export async function updateSettings(
   if (settings.subtitle !== undefined) updateData.subtitle = settings.subtitle;
   if (settings.profileImage !== undefined) updateData.profile_image = settings.profileImage;
   if (settings.headerImage !== undefined) updateData.header_image = settings.headerImage;
+  if (settings.snsLinks !== undefined) updateData.sns_links = settings.snsLinks;
   if (settings.categories !== undefined) updateData.categories = settings.categories;
   await admin
     .from("site_settings")

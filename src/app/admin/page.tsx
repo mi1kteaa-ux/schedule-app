@@ -6,8 +6,11 @@ import {
   ScheduleInput,
   SiteSettings,
   CategoryConfig,
+  SnsLinks,
   COLOR_PRESETS,
   DEFAULT_CATEGORIES,
+  EMPTY_SNS_LINKS,
+  SNS_DEFINITIONS,
 } from "@/lib/types";
 
 const EMPTY_FORM: ScheduleInput = {
@@ -20,7 +23,7 @@ const EMPTY_FORM: ScheduleInput = {
   published: true,
 };
 
-type SettingsTab = "site" | "images" | "categories";
+type SettingsTab = "site" | "images" | "sns" | "categories";
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -318,6 +321,16 @@ export default function AdminPage() {
               画像設定
             </button>
             <button
+              onClick={() => setSettingsTab("sns")}
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
+                settingsTab === "sns"
+                  ? "text-slate-800 border-b-2 border-slate-800"
+                  : "text-slate-500 active:text-slate-700"
+              }`}
+            >
+              SNSリンク
+            </button>
+            <button
               onClick={() => setSettingsTab("categories")}
               className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
                 settingsTab === "categories"
@@ -425,6 +438,58 @@ export default function AdminPage() {
                         profileImage: settings.profileImage,
                         headerImage: settings.headerImage,
                       });
+                      setShowSettings(false);
+                    }}
+                    className="px-4 sm:px-6 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"
+                  >
+                    保存
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettings(false)}
+                    className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SNS links tab */}
+            {settingsTab === "sns" && settings && (
+              <div>
+                <p className="text-xs sm:text-sm text-slate-500 mb-4">
+                  各SNSのプロフィールURLを入力してください。空欄のものはアイコンが表示されません。
+                </p>
+                <div className="space-y-3">
+                  {SNS_DEFINITIONS.map((sns) => (
+                    <div key={sns.key}>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-1">
+                        {sns.label}
+                      </label>
+                      <input
+                        type="url"
+                        value={settings.snsLinks?.[sns.key] ?? ""}
+                        onChange={(e) =>
+                          setSettings({
+                            ...settings,
+                            snsLinks: {
+                              ...(settings.snsLinks ?? EMPTY_SNS_LINKS),
+                              [sns.key]: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder={sns.placeholder}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-5">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await saveSettings({ snsLinks: settings.snsLinks });
                       setShowSettings(false);
                     }}
                     className="px-4 sm:px-6 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"

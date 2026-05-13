@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Schedule, SiteSettings, CategoryConfig } from "@/lib/types";
+import SnsIconsBar from "@/components/SnsIcons";
 import {
   getDaysInMonth,
   getFirstDayOfMonth,
@@ -141,6 +142,9 @@ export default function PublicPage() {
       )}
 
       <div className="px-3 sm:px-4 pb-6 sm:pb-8">
+
+      {/* SNS links */}
+      {settings?.snsLinks && <SnsIconsBar links={settings.snsLinks} />}
 
       {/* Category filter - horizontal scroll on mobile */}
       <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 mb-5">
