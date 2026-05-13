@@ -6,7 +6,6 @@ import {
   ScheduleInput,
   SiteSettings,
   CategoryConfig,
-  SnsLinks,
   COLOR_PRESETS,
   DEFAULT_CATEGORIES,
   EMPTY_SNS_LINKS,

@@ -9,6 +9,13 @@ function checkAuth(request: NextRequest): boolean {
   return !!password && verifyPassword(password);
 }
 
+/**
+ * IDのバリデーション（UUID形式チェック）
+ */
+function isValidUUID(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,7 +25,18 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const body = await request.json();
+
+  if (!isValidUUID(id)) {
+    return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
   const schedule = await updateSchedule(id, body);
   if (!schedule) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -35,6 +53,11 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  if (!isValidUUID(id)) {
+    return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+  }
+
   const success = await deleteSchedule(id);
   if (!success) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

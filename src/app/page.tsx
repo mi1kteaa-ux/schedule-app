@@ -60,11 +60,19 @@ export default function PublicPage() {
 
   useEffect(() => {
     fetch("/api/schedules")
-      .then((res) => res.json())
-      .then(setSchedules);
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch schedules");
+        return res.json();
+      })
+      .then(setSchedules)
+      .catch((err) => console.error("スケジュール取得エラー:", err));
     fetch("/api/settings")
-      .then((res) => res.json())
-      .then(setSettings);
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch settings");
+        return res.json();
+      })
+      .then(setSettings)
+      .catch((err) => console.error("設定取得エラー:", err));
   }, []);
 
   const prevMonth = useCallback(() => {
