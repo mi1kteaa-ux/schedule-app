@@ -392,77 +392,41 @@ export default function AdminPage() {
 
             {/* Images tab */}
             {settingsTab === "images" && settings && (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  await saveSettings({
-                    profileImage: settings.profileImage,
-                    headerImage: settings.headerImage,
-                  });
-                  setShowSettings(false);
-                }}
-              >
-                <div className="space-y-5">
+              <div>
+                <div className="space-y-6">
                   {/* Profile image */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-600 mb-1">
-                      プロフィール画像URL
-                    </label>
-                    <input
-                      type="url"
-                      value={settings.profileImage}
-                      onChange={(e) =>
-                        setSettings({ ...settings, profileImage: e.target.value })
-                      }
-                      placeholder="https://example.com/profile.jpg"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    />
-                    <p className="text-[10px] sm:text-xs text-slate-400 mt-1">
-                      正方形の画像を推奨（丸くトリミングされます）
-                    </p>
-                    {settings.profileImage && (
-                      <div className="mt-2">
-                        <img
-                          src={settings.profileImage}
-                          alt="プロフィールプレビュー"
-                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-200"
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <ImageUploadField
+                    label="プロフィール画像"
+                    hint="正方形の画像を推奨（丸くトリミングされます）"
+                    value={settings.profileImage}
+                    folder="profile"
+                    password={storedPassword}
+                    previewClass="w-16 h-16 sm:w-20 sm:h-20 rounded-full"
+                    onChange={(url) => setSettings({ ...settings, profileImage: url })}
+                  />
 
                   {/* Header image */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-600 mb-1">
-                      ヘッダー画像URL
-                    </label>
-                    <input
-                      type="url"
-                      value={settings.headerImage}
-                      onChange={(e) =>
-                        setSettings({ ...settings, headerImage: e.target.value })
-                      }
-                      placeholder="https://example.com/header.jpg"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    />
-                    <p className="text-[10px] sm:text-xs text-slate-400 mt-1">
-                      横長の画像を推奨（幅いっぱいに表示されます）
-                    </p>
-                    {settings.headerImage && (
-                      <div className="mt-2">
-                        <img
-                          src={settings.headerImage}
-                          alt="ヘッダープレビュー"
-                          className="w-full h-20 sm:h-28 object-cover rounded-lg border border-slate-200"
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <ImageUploadField
+                    label="ヘッダー画像"
+                    hint="横長の画像を推奨（幅いっぱいに表示されます）"
+                    value={settings.headerImage}
+                    folder="header"
+                    password={storedPassword}
+                    previewClass="w-full h-20 sm:h-28 rounded-lg"
+                    onChange={(url) => setSettings({ ...settings, headerImage: url })}
+                  />
                 </div>
 
                 <div className="flex gap-2 mt-5">
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={async () => {
+                      await saveSettings({
+                        profileImage: settings.profileImage,
+                        headerImage: settings.headerImage,
+                      });
+                      setShowSettings(false);
+                    }}
                     className="px-4 sm:px-6 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"
                   >
                     保存
@@ -475,7 +439,7 @@ export default function AdminPage() {
                     閉じる
                   </button>
                 </div>
-              </form>
+              </div>
             )}
 
             {/* Categories tab */}
@@ -887,5 +851,163 @@ export default function AdminPage() {
         )}
       </div>
     </main>
+  );
+}
+
+/* ─── Image Upload Component ─── */
+
+function ImageUploadField({
+  label,
+  hint,
+  value,
+  folder,
+  password,
+  previewClass,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  folder: string;
+  password: string;
+  previewClass: string;
+  onChange: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [mode, setMode] = useState<"upload" | "url">("upload");
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", folder);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "x-admin-password": password },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        onChange(data.url);
+      } else {
+        setError(data.error || "アップロードに失敗しました");
+      }
+    } catch {
+      setError("アップロードに失敗しました");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-2">
+        {label}
+      </label>
+
+      {/* Mode toggle */}
+      <div className="flex gap-1 mb-3">
+        <button
+          type="button"
+          onClick={() => setMode("upload")}
+          className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+            mode === "upload"
+              ? "bg-slate-800 text-white"
+              : "bg-slate-100 text-slate-500 active:bg-slate-200"
+          }`}
+        >
+          ファイルを選択
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("url")}
+          className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+            mode === "url"
+              ? "bg-slate-800 text-white"
+              : "bg-slate-100 text-slate-500 active:bg-slate-200"
+          }`}
+        >
+          URLを入力
+        </button>
+      </div>
+
+      {mode === "upload" ? (
+        <div>
+          <label
+            className={`flex flex-col items-center justify-center w-full h-24 sm:h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+              uploading
+                ? "border-slate-300 bg-slate-50"
+                : "border-slate-300 bg-white active:bg-slate-50 sm:hover:bg-slate-50 active:border-slate-400 sm:hover:border-slate-400"
+            }`}
+          >
+            {uploading ? (
+              <div className="text-sm text-slate-400">アップロード中...</div>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                </svg>
+                <span className="text-xs sm:text-sm text-slate-500">
+                  タップして画像を選択
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5">
+                  JPEG / PNG / WebP / GIF（5MBまで）
+                </span>
+              </>
+            )}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleFileChange}
+              disabled={uploading}
+              className="hidden"
+            />
+          </label>
+        </div>
+      ) : (
+        <input
+          type="url"
+          value={value}
+          onChange={(e) => {
+            setError("");
+            onChange(e.target.value);
+          }}
+          placeholder="https://example.com/image.jpg"
+          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+        />
+      )}
+
+      {error && (
+        <p className="text-red-500 text-xs mt-1">{error}</p>
+      )}
+      <p className="text-[10px] sm:text-xs text-slate-400 mt-1">{hint}</p>
+
+      {/* Preview & clear */}
+      {value && (
+        <div className="mt-3 flex items-end gap-3">
+          <img
+            src={value}
+            alt="プレビュー"
+            className={`object-cover border border-slate-200 ${previewClass}`}
+          />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="px-2.5 py-1 text-[10px] sm:text-xs bg-red-50 text-red-500 rounded-lg active:bg-red-100 sm:hover:bg-red-100 transition-colors shrink-0"
+          >
+            画像を削除
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
