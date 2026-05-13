@@ -32,10 +32,17 @@ function validateScheduleInput(body: Record<string, unknown>): string | null {
     return "カテゴリは50文字以内で入力してください";
   }
 
-  // time
+  // time (開始時間)
   if (body.time !== undefined && body.time !== null && body.time !== "") {
     if (typeof body.time !== "string") {
-      return "時間は文字列で入力してください";
+      return "開始時間は文字列で入力してください";
+    }
+  }
+
+  // endTime (終了時間)
+  if (body.endTime !== undefined && body.endTime !== null && body.endTime !== "") {
+    if (typeof body.endTime !== "string") {
+      return "終了時間は文字列で入力してください";
     }
   }
 

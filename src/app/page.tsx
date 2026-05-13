@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Schedule, SiteSettings, CategoryConfig } from "@/lib/types";
+import { Schedule, SiteSettings, CategoryConfig, formatTimeRange } from "@/lib/types";
 import SnsIconsBar from "@/components/SnsIcons";
 import html2canvas from "html2canvas-pro";
 import {
@@ -372,7 +372,7 @@ export default function PublicPage() {
                       </span>
                       {s.time && (
                         <span className="text-xs sm:text-sm text-slate-500">
-                          {s.time}
+                          {formatTimeRange(s.time, s.endTime)}
                         </span>
                       )}
                     </div>
@@ -474,7 +474,7 @@ export default function PublicPage() {
 
                 {/* Time */}
                 <div className="text-[10px] sm:text-xs text-slate-400 ml-2 shrink-0">
-                  {s.time || ""}
+                  {formatTimeRange(s.time, s.endTime)}
                 </div>
               </div>
             ));
@@ -532,7 +532,7 @@ export default function PublicPage() {
                     </span>
                     {s.time && (
                       <span className="text-xs sm:text-sm text-slate-500">
-                        {s.time}
+                        {formatTimeRange(s.time, s.endTime)}
                       </span>
                     )}
                   </div>

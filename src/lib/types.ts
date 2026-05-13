@@ -7,7 +7,8 @@ export interface CategoryConfig {
 export interface Schedule {
   id: string;
   date: string; // YYYY-MM-DD
-  time: string; // HH:mm or empty
+  time: string; // HH:mm or empty（開始時間）
+  endTime: string; // HH:mm or empty（終了時間）
   category: string; // CategoryConfig.id
   title: string;
   description: string;
@@ -15,6 +16,18 @@ export interface Schedule {
   published: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * 時間表示のフォーマット
+ * 開始時間あり＋終了時間あり → "10:00-12:00"
+ * 開始時間あり＋終了時間なし → "10:00-"
+ * 開始時間なし → ""
+ */
+export function formatTimeRange(time: string, endTime: string): string {
+  if (!time) return "";
+  if (endTime) return `${time}-${endTime}`;
+  return `${time}-`;
 }
 
 export type ScheduleInput = Omit<Schedule, "id" | "createdAt" | "updatedAt">;

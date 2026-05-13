@@ -10,11 +10,13 @@ import {
   DEFAULT_CATEGORIES,
   EMPTY_SNS_LINKS,
   SNS_DEFINITIONS,
+  formatTimeRange,
 } from "@/lib/types";
 
 const EMPTY_FORM: ScheduleInput = {
   date: "",
   time: "",
+  endTime: "",
   category: "",
   title: "",
   description: "",
@@ -118,6 +120,7 @@ export default function AdminPage() {
     setForm({
       date: schedule.date,
       time: schedule.time,
+      endTime: schedule.endTime,
       category: schedule.category,
       title: schedule.title,
       description: schedule.description,
@@ -724,12 +727,23 @@ export default function AdminPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">
-                時間
+                開始時間
               </label>
               <input
                 type="time"
                 value={form.time}
                 onChange={(e) => setForm({ ...form, time: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                終了時間
+              </label>
+              <input
+                type="time"
+                value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
               />
             </div>
@@ -867,7 +881,7 @@ export default function AdminPage() {
                       {getCategoryLabel(s.category)}
                     </span>
                     {s.time && (
-                      <span className="text-[10px] sm:text-xs text-slate-500">{s.time}</span>
+                      <span className="text-[10px] sm:text-xs text-slate-500">{formatTimeRange(s.time, s.endTime)}</span>
                     )}
                     {!s.published && (
                       <span className="text-[10px] sm:text-xs text-orange-500 font-medium">

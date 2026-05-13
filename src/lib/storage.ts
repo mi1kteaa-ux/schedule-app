@@ -54,7 +54,8 @@ function toSchedule(row: Record<string, unknown>): Schedule {
   return {
     id: row.id as string,
     date: row.date as string,
-    time: row.time as string,
+    time: (row.time as string) || "",
+    endTime: (row.end_time as string) || "",
     category: row.category as string,
     title: row.title as string,
     description: row.description as string,
@@ -89,6 +90,7 @@ export async function createSchedule(input: ScheduleInput): Promise<Schedule> {
     .insert({
       date: input.date,
       time: input.time,
+      end_time: input.endTime,
       category: input.category,
       title: input.title,
       description: input.description,
@@ -107,7 +109,13 @@ export async function updateSchedule(
   input: Partial<ScheduleInput>
 ): Promise<Schedule | null> {
   const admin = getAdminClient();
-  const updateData: Record<string, unknown> = { ...input, updated_at: new Date().toISOString() };
+  // camelCase → snake_case マッピング
+  const { endTime, createdAt, updatedAt, ...rest } = input as Record<string, unknown>;
+  const updateData: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() };
+  if (endTime !== undefined) {
+    updateData.end_time = endTime;
+    delete updateData.endTime;
+  }
   const { data, error } = await admin
     .from("schedules")
     .update(updateData)
