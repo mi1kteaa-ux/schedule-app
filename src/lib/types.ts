@@ -22,6 +22,8 @@ export type ScheduleInput = Omit<Schedule, "id" | "createdAt" | "updatedAt">;
 export interface SiteSettings {
   title: string;
   subtitle: string;
+  profileImage: string;
+  headerImage: string;
   categories: CategoryConfig[];
 }
 

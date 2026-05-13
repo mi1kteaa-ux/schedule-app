@@ -6,7 +6,7 @@ import { Schedule, ScheduleInput, SiteSettings, DEFAULT_CATEGORIES } from "./typ
 export async function getSettings(): Promise<SiteSettings> {
   const { data } = await getSupabase()
     .from("site_settings")
-    .select("title, subtitle, categories")
+    .select("title, subtitle, profile_image, header_image, categories")
     .eq("id", 1)
     .single();
 
@@ -14,12 +14,16 @@ export async function getSettings(): Promise<SiteSettings> {
     return {
       title: "スケジュール",
       subtitle: "出演・イベント予定",
+      profileImage: "",
+      headerImage: "",
       categories: DEFAULT_CATEGORIES,
     };
   }
   return {
     title: data.title,
     subtitle: data.subtitle,
+    profileImage: data.profile_image ?? "",
+    headerImage: data.header_image ?? "",
     categories: data.categories ?? DEFAULT_CATEGORIES,
   };
 }
@@ -28,9 +32,15 @@ export async function updateSettings(
   settings: Partial<SiteSettings>
 ): Promise<SiteSettings> {
   const admin = getAdminClient();
+  const updateData: Record<string, unknown> = {};
+  if (settings.title !== undefined) updateData.title = settings.title;
+  if (settings.subtitle !== undefined) updateData.subtitle = settings.subtitle;
+  if (settings.profileImage !== undefined) updateData.profile_image = settings.profileImage;
+  if (settings.headerImage !== undefined) updateData.header_image = settings.headerImage;
+  if (settings.categories !== undefined) updateData.categories = settings.categories;
   await admin
     .from("site_settings")
-    .update(settings)
+    .update(updateData)
     .eq("id", 1);
   return getSettings();
 }

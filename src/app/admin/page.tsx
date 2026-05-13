@@ -20,7 +20,7 @@ const EMPTY_FORM: ScheduleInput = {
   published: true,
 };
 
-type SettingsTab = "site" | "categories";
+type SettingsTab = "site" | "images" | "categories";
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -308,6 +308,16 @@ export default function AdminPage() {
               サイト情報
             </button>
             <button
+              onClick={() => setSettingsTab("images")}
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
+                settingsTab === "images"
+                  ? "text-slate-800 border-b-2 border-slate-800"
+                  : "text-slate-500 active:text-slate-700"
+              }`}
+            >
+              画像設定
+            </button>
+            <button
               onClick={() => setSettingsTab("categories")}
               className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
                 settingsTab === "categories"
@@ -373,6 +383,94 @@ export default function AdminPage() {
                     type="button"
                     onClick={() => setShowSettings(false)}
                     className="px-6 py-2 bg-slate-200 text-slate-600 rounded-lg font-medium hover:bg-slate-300 transition-colors"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Images tab */}
+            {settingsTab === "images" && settings && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await saveSettings({
+                    profileImage: settings.profileImage,
+                    headerImage: settings.headerImage,
+                  });
+                  setShowSettings(false);
+                }}
+              >
+                <div className="space-y-5">
+                  {/* Profile image */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-1">
+                      プロフィール画像URL
+                    </label>
+                    <input
+                      type="url"
+                      value={settings.profileImage}
+                      onChange={(e) =>
+                        setSettings({ ...settings, profileImage: e.target.value })
+                      }
+                      placeholder="https://example.com/profile.jpg"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-1">
+                      正方形の画像を推奨（丸くトリミングされます）
+                    </p>
+                    {settings.profileImage && (
+                      <div className="mt-2">
+                        <img
+                          src={settings.profileImage}
+                          alt="プロフィールプレビュー"
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-200"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Header image */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-1">
+                      ヘッダー画像URL
+                    </label>
+                    <input
+                      type="url"
+                      value={settings.headerImage}
+                      onChange={(e) =>
+                        setSettings({ ...settings, headerImage: e.target.value })
+                      }
+                      placeholder="https://example.com/header.jpg"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                    <p className="text-[10px] sm:text-xs text-slate-400 mt-1">
+                      横長の画像を推奨（幅いっぱいに表示されます）
+                    </p>
+                    {settings.headerImage && (
+                      <div className="mt-2">
+                        <img
+                          src={settings.headerImage}
+                          alt="ヘッダープレビュー"
+                          className="w-full h-20 sm:h-28 object-cover rounded-lg border border-slate-200"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-5">
+                  <button
+                    type="submit"
+                    className="px-4 sm:px-6 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"
+                  >
+                    保存
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettings(false)}
+                    className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors"
                   >
                     閉じる
                   </button>

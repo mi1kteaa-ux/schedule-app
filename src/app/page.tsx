@@ -79,17 +79,68 @@ export default function PublicPage() {
   };
 
   return (
-    <main className="flex-1 max-w-4xl mx-auto w-full px-3 sm:px-4 py-6 sm:py-8">
-      <header className="text-center mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
-          {settings?.title ?? ""}
-        </h1>
-        {settings?.subtitle && (
-          <p className="text-slate-500 mt-1 text-sm sm:text-base">
-            {settings.subtitle}
-          </p>
-        )}
-      </header>
+    <main className="flex-1 max-w-4xl mx-auto w-full">
+      {/* Header with optional hero image */}
+      {settings?.headerImage ? (
+        <div className="relative">
+          <div className="w-full h-32 sm:h-48 overflow-hidden">
+            <img
+              src={settings.headerImage}
+              alt="ヘッダー画像"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="relative -mt-10 sm:-mt-12 px-3 sm:px-4 pb-4 sm:pb-6">
+            <div className="flex items-end gap-3 sm:gap-4">
+              {settings?.profileImage ? (
+                <img
+                  src={settings.profileImage}
+                  alt="プロフィール"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white shadow-md object-cover bg-white shrink-0"
+                />
+              ) : (
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white shadow-md bg-slate-200 shrink-0 flex items-center justify-center text-slate-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 sm:w-10 sm:h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+                </div>
+              )}
+              <div className="pb-1 sm:pb-2 min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-slate-800 truncate">
+                  {settings?.title ?? ""}
+                </h1>
+                {settings?.subtitle && (
+                  <p className="text-slate-500 text-xs sm:text-sm truncate">
+                    {settings.subtitle}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="px-3 sm:px-4 pt-6 sm:pt-8 pb-4 sm:pb-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            {settings?.profileImage ? (
+              <img
+                src={settings.profileImage}
+                alt="プロフィール"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full shadow-sm object-cover shrink-0"
+              />
+            ) : null}
+            <div className={`min-w-0 ${settings?.profileImage ? "" : "text-center w-full"}`}>
+              <h1 className="text-xl sm:text-3xl font-bold text-slate-800 truncate">
+                {settings?.title ?? ""}
+              </h1>
+              {settings?.subtitle && (
+                <p className="text-slate-500 mt-0.5 text-xs sm:text-base truncate">
+                  {settings.subtitle}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="px-3 sm:px-4 pb-6 sm:pb-8">
 
       {/* Category filter - horizontal scroll on mobile */}
       <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 mb-5">
@@ -349,6 +400,7 @@ export default function PublicPage() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </main>
   );
