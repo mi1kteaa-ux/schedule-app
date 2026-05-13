@@ -17,6 +17,7 @@ export default function PublicPage() {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -195,149 +196,257 @@ export default function PublicPage() {
             今日
           </button>
         </div>
-        <button
-          onClick={nextMonth}
-          className="p-2 rounded-lg active:bg-slate-200 transition-colors text-slate-600 text-sm sm:text-base"
-        >
-          翌月 →
-        </button>
+        <div className="flex items-center gap-1">
+          {/* View mode toggle */}
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
+              viewMode === "grid" ? "bg-slate-800 text-white" : "text-slate-400 active:bg-slate-200"
+            }`}
+            aria-label="カレンダー表示"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setViewMode("list")}
+            className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
+              viewMode === "list" ? "bg-slate-800 text-white" : "text-slate-400 active:bg-slate-200"
+            }`}
+            aria-label="リスト表示"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+          {/* Month nav */}
+          <button
+            onClick={nextMonth}
+            className="p-2 rounded-lg active:bg-slate-200 transition-colors text-slate-600 text-sm sm:text-base"
+          >
+            翌月 →
+          </button>
+        </div>
       </div>
 
-      {/* Calendar grid */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="grid grid-cols-7">
-          {Array.from({ length: 7 }, (_, i) => (
-            <div
-              key={i}
-              className={`py-1.5 sm:py-2 text-center text-xs sm:text-sm font-medium border-b border-slate-200 ${
-                i === 6
-                  ? "text-red-500 bg-red-50"
-                  : i === 5
-                  ? "text-blue-500 bg-blue-50"
-                  : "text-slate-500 bg-slate-50"
-              }`}
-            >
-              {getDayLabel(i)}
+      {/* Calendar grid view */}
+      {viewMode === "grid" && (
+        <>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="grid grid-cols-7">
+              {Array.from({ length: 7 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`py-1.5 sm:py-2 text-center text-xs sm:text-sm font-medium border-b border-slate-200 ${
+                    i === 6
+                      ? "text-red-500 bg-red-50"
+                      : i === 5
+                      ? "text-blue-500 bg-blue-50"
+                      : "text-slate-500 bg-slate-50"
+                  }`}
+                >
+                  {getDayLabel(i)}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="grid grid-cols-7">
-          {Array.from({ length: firstDay }, (_, i) => (
-            <div
-              key={`empty-${i}`}
-              className="min-h-[68px] sm:min-h-[80px] border-b border-r border-slate-100"
-            />
-          ))}
+            <div className="grid grid-cols-7">
+              {Array.from({ length: firstDay }, (_, i) => (
+                <div
+                  key={`empty-${i}`}
+                  className="min-h-[68px] sm:min-h-[80px] border-b border-r border-slate-100"
+                />
+              ))}
+
+              {Array.from({ length: daysInMonth }, (_, i) => {
+                const day = i + 1;
+                const dateStr = toDateString(year, month, day);
+                const daySchedules = getSchedulesForDate(dateStr);
+                const isPast = dateStr < today;
+                const isToday = dateStr === today;
+                const dayOfWeek = (firstDay + i) % 7;
+                const isSelected = selectedDate === dateStr;
+
+                return (
+                  <div
+                    key={day}
+                    onClick={() =>
+                      daySchedules.length > 0
+                        ? setSelectedDate(isSelected ? null : dateStr)
+                        : null
+                    }
+                    className={`min-h-[68px] sm:min-h-[80px] p-0.5 sm:p-1 border-b border-r border-slate-100 transition-colors ${
+                      isPast
+                        ? "bg-slate-50 opacity-40"
+                        : daySchedules.length > 0
+                        ? "cursor-pointer active:bg-blue-50"
+                        : ""
+                    } ${isSelected ? "bg-blue-50 ring-2 ring-blue-300 ring-inset" : ""}`}
+                  >
+                    <div
+                      className={`text-[10px] sm:text-sm font-medium mb-0.5 sm:mb-1 ${
+                        isToday
+                          ? "bg-slate-800 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center mx-auto text-[10px] sm:text-sm"
+                          : dayOfWeek === 6
+                          ? "text-red-500 text-center"
+                          : dayOfWeek === 5
+                          ? "text-blue-500 text-center"
+                          : "text-slate-700 text-center"
+                      }`}
+                    >
+                      {day}
+                    </div>
+                    <div className="space-y-px sm:space-y-0.5">
+                      {daySchedules.slice(0, 3).map((s) => (
+                        <div
+                          key={s.id}
+                          className="text-[7px] sm:text-[10px] leading-tight px-0.5 sm:px-1 py-px sm:py-0.5 rounded text-white truncate"
+                          style={{ backgroundColor: getCategoryColor(s.category) }}
+                        >
+                          {s.title}
+                        </div>
+                      ))}
+                      {daySchedules.length > 3 && (
+                        <div className="text-[7px] sm:text-[10px] text-slate-400 text-center">
+                          +{daySchedules.length - 3}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Selected date detail */}
+          {selectedDate && selectedSchedules.length > 0 && (
+            <div className="mt-4 sm:mt-6 bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-slate-700 mb-3 sm:mb-4">
+                {selectedDate.replace(/-/g, "/")}（{getDayOfWeekLabel(selectedDate)}）の予定
+              </h3>
+              <div className="space-y-4">
+                {selectedSchedules.map((s) => (
+                  <div
+                    key={s.id}
+                    className="border-l-4 pl-3 sm:pl-4 py-2"
+                    style={{ borderColor: getCategoryColor(s.category) }}
+                  >
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                      <span
+                        className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full text-white"
+                        style={{ backgroundColor: getCategoryColor(s.category) }}
+                      >
+                        {getCategoryLabel(s.category)}
+                      </span>
+                      {s.time && (
+                        <span className="text-xs sm:text-sm text-slate-500">
+                          {s.time}
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-bold text-slate-800 text-sm sm:text-base">
+                      {s.title}
+                    </h4>
+                    {s.description && (
+                      <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                        {s.description}
+                      </p>
+                    )}
+                    {s.url && (
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs sm:text-sm hover:underline mt-1 inline-block"
+                        style={{ color: getCategoryColor(s.category) }}
+                      >
+                        詳細リンク →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* List view */}
+      {viewMode === "list" && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          {/* List header */}
+          <div className="bg-rose-400 text-white text-center py-2 sm:py-3">
+            <h2 className="text-base sm:text-xl font-bold">{getMonthName(year, month)}</h2>
+          </div>
 
           {Array.from({ length: daysInMonth }, (_, i) => {
             const day = i + 1;
             const dateStr = toDateString(year, month, day);
             const daySchedules = getSchedulesForDate(dateStr);
+            const d = new Date(dateStr + "T00:00:00");
+            const dow = d.getDay();
+            const dowLabel = ["日", "月", "火", "水", "木", "金", "土"][dow];
+            const isSunday = dow === 0;
+            const isSaturday = dow === 6;
             const isPast = dateStr < today;
             const isToday = dateStr === today;
-            const dayOfWeek = (firstDay + i) % 7;
-            const isSelected = selectedDate === dateStr;
 
-            return (
-              <div
-                key={day}
-                onClick={() =>
-                  daySchedules.length > 0
-                    ? setSelectedDate(isSelected ? null : dateStr)
-                    : null
-                }
-                className={`min-h-[68px] sm:min-h-[80px] p-0.5 sm:p-1 border-b border-r border-slate-100 transition-colors ${
-                  isPast
-                    ? "bg-slate-50 opacity-40"
-                    : daySchedules.length > 0
-                    ? "cursor-pointer active:bg-blue-50"
-                    : ""
-                } ${isSelected ? "bg-blue-50 ring-2 ring-blue-300 ring-inset" : ""}`}
-              >
+            if (daySchedules.length === 0) {
+              return (
                 <div
-                  className={`text-[10px] sm:text-sm font-medium mb-0.5 sm:mb-1 ${
-                    isToday
-                      ? "bg-slate-800 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center mx-auto text-[10px] sm:text-sm"
-                      : dayOfWeek === 6
-                      ? "text-red-500 text-center"
-                      : dayOfWeek === 5
-                      ? "text-blue-500 text-center"
-                      : "text-slate-700 text-center"
-                  }`}
+                  key={day}
+                  className={`flex items-center border-b border-slate-100 px-3 sm:px-4 py-2 sm:py-2.5 ${
+                    isPast ? "opacity-40" : ""
+                  } ${isToday ? "bg-blue-50" : ""}`}
                 >
-                  {day}
+                  <div className={`font-bold text-sm sm:text-base min-w-[60px] sm:min-w-[72px] ${
+                    isSunday ? "text-red-500" : isSaturday ? "text-blue-500" : "text-slate-700"
+                  }`}>
+                    {day}（{dowLabel}）
+                  </div>
+                  <div className="text-slate-300 text-xs sm:text-sm ml-2">－</div>
+                  <div className="text-slate-300 text-xs sm:text-sm ml-4">－</div>
                 </div>
-                <div className="space-y-px sm:space-y-0.5">
-                  {daySchedules.slice(0, 3).map((s) => (
-                    <div
-                      key={s.id}
-                      className="text-[7px] sm:text-[10px] leading-tight px-0.5 sm:px-1 py-px sm:py-0.5 rounded text-white truncate"
-                      style={{ backgroundColor: getCategoryColor(s.category) }}
-                    >
-                      {s.title}
-                    </div>
-                  ))}
-                  {daySchedules.length > 3 && (
-                    <div className="text-[7px] sm:text-[10px] text-slate-400 text-center">
-                      +{daySchedules.length - 3}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              );
+            }
 
-      {/* Selected date detail */}
-      {selectedDate && selectedSchedules.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-bold text-slate-700 mb-3 sm:mb-4">
-            {selectedDate.replace(/-/g, "/")}（{getDayOfWeekLabel(selectedDate)}）の予定
-          </h3>
-          <div className="space-y-4">
-            {selectedSchedules.map((s) => (
+            return daySchedules.map((s, sIdx) => (
               <div
-                key={s.id}
-                className="border-l-4 pl-3 sm:pl-4 py-2"
-                style={{ borderColor: getCategoryColor(s.category) }}
+                key={`${day}-${s.id}`}
+                className={`flex items-center border-b border-slate-100 px-3 sm:px-4 py-2 sm:py-2.5 ${
+                  isPast ? "opacity-40" : ""
+                } ${isToday ? "bg-blue-50" : ""}`}
               >
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                {/* Date (only show on first schedule of the day) */}
+                <div className={`font-bold text-sm sm:text-base min-w-[60px] sm:min-w-[72px] ${
+                  isSunday ? "text-red-500" : isSaturday ? "text-blue-500" : "text-slate-700"
+                }`}>
+                  {sIdx === 0 ? `${day}（${dowLabel}）` : ""}
+                </div>
+
+                {/* Category badge */}
+                <div className="min-w-[64px] sm:min-w-[80px] mr-2 sm:mr-3">
                   <span
-                    className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full text-white"
+                    className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded text-white inline-block"
                     style={{ backgroundColor: getCategoryColor(s.category) }}
                   >
                     {getCategoryLabel(s.category)}
                   </span>
-                  {s.time && (
-                    <span className="text-xs sm:text-sm text-slate-500">
-                      {s.time}
-                    </span>
-                  )}
                 </div>
-                <h4 className="font-bold text-slate-800 text-sm sm:text-base">
+
+                {/* Title */}
+                <div className="flex-1 min-w-0 text-xs sm:text-sm font-medium text-slate-800 truncate">
                   {s.title}
-                </h4>
-                {s.description && (
-                  <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                    {s.description}
-                  </p>
-                )}
-                {s.url && (
-                  <a
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs sm:text-sm hover:underline mt-1 inline-block"
-                    style={{ color: getCategoryColor(s.category) }}
-                  >
-                    詳細リンク →
-                  </a>
-                )}
+                </div>
+
+                {/* Time */}
+                <div className="text-[10px] sm:text-xs text-slate-400 ml-2 shrink-0">
+                  {s.time || ""}
+                </div>
               </div>
-            ))}
-          </div>
+            ));
+          })}
         </div>
       )}
 
