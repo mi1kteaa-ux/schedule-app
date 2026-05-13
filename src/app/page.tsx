@@ -171,7 +171,7 @@ export default function PublicPage() {
           {Array.from({ length: firstDay }, (_, i) => (
             <div
               key={`empty-${i}`}
-              className="min-h-[52px] sm:min-h-[80px] border-b border-r border-slate-100"
+              className="min-h-[68px] sm:min-h-[80px] border-b border-r border-slate-100"
             />
           ))}
 
@@ -192,7 +192,7 @@ export default function PublicPage() {
                     ? setSelectedDate(isSelected ? null : dateStr)
                     : null
                 }
-                className={`min-h-[52px] sm:min-h-[80px] p-0.5 sm:p-1 border-b border-r border-slate-100 transition-colors ${
+                className={`min-h-[68px] sm:min-h-[80px] p-0.5 sm:p-1 border-b border-r border-slate-100 transition-colors ${
                   isPast
                     ? "bg-slate-50 opacity-40"
                     : daySchedules.length > 0
@@ -201,7 +201,7 @@ export default function PublicPage() {
                 } ${isSelected ? "bg-blue-50 ring-2 ring-blue-300 ring-inset" : ""}`}
               >
                 <div
-                  className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 ${
+                  className={`text-[10px] sm:text-sm font-medium mb-0.5 sm:mb-1 ${
                     isToday
                       ? "bg-slate-800 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center mx-auto text-[10px] sm:text-sm"
                       : dayOfWeek === 6
@@ -213,20 +213,19 @@ export default function PublicPage() {
                 >
                   {day}
                 </div>
-                <div className="space-y-0.5">
-                  {daySchedules.slice(0, 2).map((s) => (
+                <div className="space-y-px sm:space-y-0.5">
+                  {daySchedules.slice(0, 3).map((s) => (
                     <div
                       key={s.id}
-                      className="text-[8px] sm:text-[10px] leading-tight px-0.5 sm:px-1 py-px sm:py-0.5 rounded text-white truncate"
+                      className="text-[7px] sm:text-[10px] leading-tight px-0.5 sm:px-1 py-px sm:py-0.5 rounded text-white truncate"
                       style={{ backgroundColor: getCategoryColor(s.category) }}
                     >
-                      <span className="hidden sm:inline">{s.title}</span>
-                      <span className="sm:hidden">●</span>
+                      {s.title}
                     </div>
                   ))}
-                  {daySchedules.length > 2 && (
-                    <div className="text-[8px] sm:text-[10px] text-slate-400 text-center">
-                      +{daySchedules.length - 2}
+                  {daySchedules.length > 3 && (
+                    <div className="text-[7px] sm:text-[10px] text-slate-400 text-center">
+                      +{daySchedules.length - 3}
                     </div>
                   )}
                 </div>
