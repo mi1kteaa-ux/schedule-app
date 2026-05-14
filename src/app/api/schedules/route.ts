@@ -46,6 +46,13 @@ function validateScheduleInput(body: Record<string, unknown>): string | null {
     }
   }
 
+  // location (会場)
+  if (body.location !== undefined && typeof body.location === "string") {
+    if (body.location.length > 200) {
+      return "会場は200文字以内で入力してください";
+    }
+  }
+
   // description
   if (body.description !== undefined && typeof body.description === "string") {
     if (body.description.length > 2000) {

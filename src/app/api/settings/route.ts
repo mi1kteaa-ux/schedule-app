@@ -37,6 +37,13 @@ function validateSettingsInput(body: Record<string, unknown>): string | null {
     }
   }
 
+  // テーマカラーのバリデーション
+  if (body.themeColor !== undefined) {
+    if (typeof body.themeColor !== "string" || !/^#[0-9a-fA-F]{6}$/.test(body.themeColor)) {
+      return "テーマカラーは#RRGGBB形式で入力してください";
+    }
+  }
+
   // SNSリンクのバリデーション
   if (body.snsLinks !== undefined) {
     if (typeof body.snsLinks !== "object" || body.snsLinks === null || Array.isArray(body.snsLinks)) {

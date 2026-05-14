@@ -10,6 +10,7 @@ import {
   DEFAULT_CATEGORIES,
   EMPTY_SNS_LINKS,
   SNS_DEFINITIONS,
+  THEME_COLOR_PRESETS,
   formatTimeRange,
 } from "@/lib/types";
 
@@ -20,11 +21,25 @@ const EMPTY_FORM: ScheduleInput = {
   category: "",
   title: "",
   description: "",
+  location: "",
   url: "",
   published: true,
 };
 
 type SettingsTab = "site" | "images" | "sns" | "categories";
+
+/** 繰り返し設定 */
+interface RepeatConfig {
+  enabled: boolean;
+  type: "weekly" | "biweekly" | "monthly";
+  count: number; // 繰り返し回数
+}
+
+const DEFAULT_REPEAT: RepeatConfig = {
+  enabled: false,
+  type: "weekly",
+  count: 4,
+};
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -40,6 +55,8 @@ export default function AdminPage() {
   const [editCategories, setEditCategories] = useState<CategoryConfig[]>([]);
   const [newCatLabel, setNewCatLabel] = useState("");
   const [newCatColor, setNewCatColor] = useState("#3b82f6");
+  const [repeat, setRepeat] = useState<RepeatConfig>({ ...DEFAULT_REPEAT });
+  const [submitting, setSubmitting] = useState(false);
 
   const storedPassword = authenticated ? password : "";
   const categories = settings?.categories ?? [];
@@ -88,32 +105,83 @@ export default function AdminPage() {
       setAuthenticated(true);
       setAuthError("");
     } else {
-      setAuthError("パスワードが正しくありません");
+      const data = await res.json().catch(() => ({}));
+      setAuthError(data.error || "パスワードが正しくありません");
     }
+  }
+
+  /** 繰り返し日付を生成 */
+  function generateRepeatDates(baseDate: string, config: RepeatConfig): string[] {
+    const dates: string[] = [baseDate];
+    const base = new Date(baseDate + "T00:00:00");
+
+    for (let i = 1; i < config.count; i++) {
+      const next = new Date(base);
+      if (config.type === "weekly") {
+        next.setDate(base.getDate() + 7 * i);
+      } else if (config.type === "biweekly") {
+        next.setDate(base.getDate() + 14 * i);
+      } else {
+        next.setMonth(base.getMonth() + i);
+      }
+      const y = next.getFullYear();
+      const m = String(next.getMonth() + 1).padStart(2, "0");
+      const d = String(next.getDate()).padStart(2, "0");
+      dates.push(`${y}-${m}-${d}`);
+    }
+    return dates;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.date || !form.title || !form.category) return;
 
-    const url = editingId
-      ? `/api/schedules/${editingId}`
-      : "/api/schedules";
-    const method = editingId ? "PUT" : "POST";
+    setSubmitting(true);
 
-    await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-password": storedPassword,
-      },
-      body: JSON.stringify(form),
-    });
+    try {
+      if (editingId) {
+        // 編集モード（繰り返しなし）
+        await fetch(`/api/schedules/${editingId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-password": storedPassword,
+          },
+          body: JSON.stringify(form),
+        });
+      } else if (repeat.enabled) {
+        // 繰り返し登録
+        const dates = generateRepeatDates(form.date, repeat);
+        for (const date of dates) {
+          await fetch("/api/schedules", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-admin-password": storedPassword,
+            },
+            body: JSON.stringify({ ...form, date }),
+          });
+        }
+      } else {
+        // 通常の新規登録
+        await fetch("/api/schedules", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-password": storedPassword,
+          },
+          body: JSON.stringify(form),
+        });
+      }
 
-    setForm({ ...EMPTY_FORM });
-    setEditingId(null);
-    setShowForm(false);
-    fetchSchedules();
+      setForm({ ...EMPTY_FORM });
+      setEditingId(null);
+      setShowForm(false);
+      setRepeat({ ...DEFAULT_REPEAT });
+      fetchSchedules();
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleEdit(schedule: Schedule) {
@@ -124,11 +192,13 @@ export default function AdminPage() {
       category: schedule.category,
       title: schedule.title,
       description: schedule.description,
+      location: schedule.location,
       url: schedule.url,
       published: schedule.published,
     });
     setEditingId(schedule.id);
     setShowForm(true);
+    setRepeat({ ...DEFAULT_REPEAT });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -288,6 +358,7 @@ export default function AdminPage() {
               if (editingId) {
                 setEditingId(null);
                 setForm({ ...EMPTY_FORM });
+                setRepeat({ ...DEFAULT_REPEAT });
               }
             }}
             className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm bg-slate-800 text-white rounded-lg active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"
@@ -302,50 +373,31 @@ export default function AdminPage() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 sm:mb-8 overflow-hidden">
           {/* Tabs */}
           <div className="flex border-b border-slate-200">
-            <button
-              onClick={() => setSettingsTab("site")}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
-                settingsTab === "site"
-                  ? "text-slate-800 border-b-2 border-slate-800"
-                  : "text-slate-500 active:text-slate-700"
-              }`}
-            >
-              サイト情報
-            </button>
-            <button
-              onClick={() => setSettingsTab("images")}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
-                settingsTab === "images"
-                  ? "text-slate-800 border-b-2 border-slate-800"
-                  : "text-slate-500 active:text-slate-700"
-              }`}
-            >
-              画像設定
-            </button>
-            <button
-              onClick={() => setSettingsTab("sns")}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
-                settingsTab === "sns"
-                  ? "text-slate-800 border-b-2 border-slate-800"
-                  : "text-slate-500 active:text-slate-700"
-              }`}
-            >
-              SNSリンク
-            </button>
-            <button
-              onClick={() => setSettingsTab("categories")}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
-                settingsTab === "categories"
-                  ? "text-slate-800 border-b-2 border-slate-800"
-                  : "text-slate-500 active:text-slate-700"
-              }`}
-            >
-              カテゴリ設定
-            </button>
+            {(["site", "images", "sns", "categories"] as SettingsTab[]).map((tab) => {
+              const labels: Record<SettingsTab, string> = {
+                site: "サイト情報",
+                images: "画像設定",
+                sns: "SNSリンク",
+                categories: "カテゴリ設定",
+              };
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setSettingsTab(tab)}
+                  className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
+                    settingsTab === tab
+                      ? "text-slate-800 border-b-2 border-slate-800"
+                      : "text-slate-500 active:text-slate-700"
+                  }`}
+                >
+                  {labels[tab]}
+                </button>
+              );
+            })}
           </div>
 
           <div className="p-4 sm:p-6">
-            {/* Site info tab */}
+            {/* Site info tab - with theme color */}
             {settingsTab === "site" && (
               <form
                 onSubmit={async (e) => {
@@ -353,6 +405,7 @@ export default function AdminPage() {
                   await saveSettings({
                     title: settings.title,
                     subtitle: settings.subtitle,
+                    themeColor: settings.themeColor,
                   });
                   setShowSettings(false);
                 }}
@@ -386,6 +439,56 @@ export default function AdminPage() {
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
                     />
                   </div>
+
+                  {/* Theme color */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-600 mb-2">
+                      テーマカラー
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {THEME_COLOR_PRESETS.map((preset) => (
+                        <button
+                          key={preset.color}
+                          type="button"
+                          onClick={() =>
+                            setSettings({ ...settings, themeColor: preset.color })
+                          }
+                          className={`w-8 h-8 rounded-lg border-2 transition-transform ${
+                            settings.themeColor === preset.color
+                              ? "border-slate-800 scale-110"
+                              : "border-slate-200"
+                          }`}
+                          style={{ backgroundColor: preset.color }}
+                          title={preset.name}
+                        />
+                      ))}
+                      <div className="relative">
+                        <div
+                          className="w-8 h-8 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs cursor-pointer"
+                          title="カスタムカラー"
+                        >
+                          +
+                        </div>
+                        <input
+                          type="color"
+                          value={settings.themeColor || "#fb7185"}
+                          onChange={(e) =>
+                            setSettings({ ...settings, themeColor: e.target.value })
+                          }
+                          className="absolute inset-0 opacity-0 cursor-pointer w-8 h-8"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-5 h-5 rounded"
+                        style={{ backgroundColor: settings.themeColor || "#fb7185" }}
+                      />
+                      <span className="text-xs text-slate-500">
+                        {settings.themeColor || "#fb7185"} - ヘッダーバーやボタンに適用されます
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button
@@ -409,7 +512,6 @@ export default function AdminPage() {
             {settingsTab === "images" && settings && (
               <div>
                 <div className="space-y-6">
-                  {/* Profile image */}
                   <ImageUploadField
                     label="プロフィール画像"
                     hint="正方形の画像を推奨（丸くトリミングされます）"
@@ -419,8 +521,6 @@ export default function AdminPage() {
                     previewClass="w-16 h-16 sm:w-20 sm:h-20 rounded-full"
                     onChange={(url) => setSettings({ ...settings, profileImage: url })}
                   />
-
-                  {/* Header image */}
                   <ImageUploadField
                     label="ヘッダー画像"
                     hint="横長の画像を推奨（幅いっぱいに表示されます）"
@@ -431,7 +531,6 @@ export default function AdminPage() {
                     onChange={(url) => setSettings({ ...settings, headerImage: url })}
                   />
                 </div>
-
                 <div className="flex gap-2 mt-5">
                   <button
                     type="button"
@@ -512,7 +611,6 @@ export default function AdminPage() {
             {/* Categories tab */}
             {settingsTab === "categories" && (
               <div>
-                {/* Category list */}
                 <div className="space-y-2 mb-6">
                   {editCategories.length === 0 && (
                     <p className="text-slate-400 text-sm text-center py-4">
@@ -520,92 +618,24 @@ export default function AdminPage() {
                     </p>
                   )}
                   {editCategories.map((cat, idx) => (
-                    <div
-                      key={cat.id}
-                      className="bg-slate-50 rounded-lg p-3"
-                    >
+                    <div key={cat.id} className="bg-slate-50 rounded-lg p-3">
                       <div className="flex items-center gap-2 sm:gap-3">
-                        {/* Reorder buttons */}
                         <div className="flex flex-col gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => moveCategoryUp(idx)}
-                            className="text-slate-400 active:text-slate-600 sm:hover:text-slate-600 text-xs leading-none"
-                            disabled={idx === 0}
-                          >
-                            ▲
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveCategoryDown(idx)}
-                            className="text-slate-400 active:text-slate-600 sm:hover:text-slate-600 text-xs leading-none"
-                            disabled={idx === editCategories.length - 1}
-                          >
-                            ▼
-                          </button>
+                          <button type="button" onClick={() => moveCategoryUp(idx)} className="text-slate-400 active:text-slate-600 sm:hover:text-slate-600 text-xs leading-none" disabled={idx === 0}>▲</button>
+                          <button type="button" onClick={() => moveCategoryDown(idx)} className="text-slate-400 active:text-slate-600 sm:hover:text-slate-600 text-xs leading-none" disabled={idx === editCategories.length - 1}>▼</button>
                         </div>
-
-                        {/* Color preview & picker */}
                         <div className="relative shrink-0">
-                          <div
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg cursor-pointer border border-slate-200"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                          <input
-                            type="color"
-                            value={cat.color}
-                            onChange={(e) =>
-                              updateCategoryField(cat.id, "color", e.target.value)
-                            }
-                            className="absolute inset-0 opacity-0 cursor-pointer w-7 h-7 sm:w-8 sm:h-8"
-                          />
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg cursor-pointer border border-slate-200" style={{ backgroundColor: cat.color }} />
+                          <input type="color" value={cat.color} onChange={(e) => updateCategoryField(cat.id, "color", e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-7 h-7 sm:w-8 sm:h-8" />
                         </div>
-
-                        {/* Label input */}
-                        <input
-                          type="text"
-                          value={cat.label}
-                          onChange={(e) =>
-                            updateCategoryField(cat.id, "label", e.target.value)
-                          }
-                          className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                        />
-
-                        {/* Preview badge */}
-                        <span
-                          className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full text-white shrink-0"
-                          style={{ backgroundColor: cat.color }}
-                        >
-                          {cat.label || "---"}
-                        </span>
-
-                        {/* Delete */}
-                        <button
-                          type="button"
-                          onClick={() => removeCategory(cat.id)}
-                          className="text-red-400 active:text-red-600 sm:hover:text-red-600 text-xs shrink-0"
-                        >
-                          削除
-                        </button>
+                        <input type="text" value={cat.label} onChange={(e) => updateCategoryField(cat.id, "label", e.target.value)} className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
+                        <span className="text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full text-white shrink-0" style={{ backgroundColor: cat.color }}>{cat.label || "---"}</span>
+                        <button type="button" onClick={() => removeCategory(cat.id)} className="text-red-400 active:text-red-600 sm:hover:text-red-600 text-xs shrink-0">削除</button>
                       </div>
-
-                      {/* Color presets dropdown - second row on mobile */}
                       <div className="mt-2 ml-7 sm:ml-8">
-                        <select
-                          value={cat.color}
-                          onChange={(e) =>
-                            updateCategoryField(cat.id, "color", e.target.value)
-                          }
-                          className="px-2 py-1 border border-slate-300 rounded text-xs sm:text-sm bg-white w-full sm:w-auto"
-                        >
-                          {COLOR_PRESETS.map((p) => (
-                            <option key={p.color} value={p.color}>
-                              {p.name}
-                            </option>
-                          ))}
-                          {!COLOR_PRESETS.find((p) => p.color === cat.color) && (
-                            <option value={cat.color}>カスタム</option>
-                          )}
+                        <select value={cat.color} onChange={(e) => updateCategoryField(cat.id, "color", e.target.value)} className="px-2 py-1 border border-slate-300 rounded text-xs sm:text-sm bg-white w-full sm:w-auto">
+                          {COLOR_PRESETS.map((p) => (<option key={p.color} value={p.color}>{p.name}</option>))}
+                          {!COLOR_PRESETS.find((p) => p.color === cat.color) && (<option value={cat.color}>カスタム</option>)}
                         </select>
                       </div>
                     </div>
@@ -614,87 +644,26 @@ export default function AdminPage() {
 
                 {/* Add new category */}
                 <div className="bg-slate-50 rounded-lg p-3 sm:p-4 mb-4">
-                  <h4 className="text-xs sm:text-sm font-medium text-slate-600 mb-2 sm:mb-3">
-                    カテゴリを追加
-                  </h4>
+                  <h4 className="text-xs sm:text-sm font-medium text-slate-600 mb-2 sm:mb-3">カテゴリを追加</h4>
                   <div className="flex items-center gap-2 sm:gap-3 mb-2">
                     <div className="relative shrink-0">
-                      <div
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg cursor-pointer border border-slate-200"
-                        style={{ backgroundColor: newCatColor }}
-                      />
-                      <input
-                        type="color"
-                        value={newCatColor}
-                        onChange={(e) => setNewCatColor(e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-7 h-7 sm:w-8 sm:h-8"
-                      />
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg cursor-pointer border border-slate-200" style={{ backgroundColor: newCatColor }} />
+                      <input type="color" value={newCatColor} onChange={(e) => setNewCatColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-7 h-7 sm:w-8 sm:h-8" />
                     </div>
-                    <input
-                      type="text"
-                      value={newCatLabel}
-                      onChange={(e) => setNewCatLabel(e.target.value)}
-                      placeholder="カテゴリ名"
-                      className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addCategory();
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={addCategory}
-                      className="px-3 sm:px-4 py-1.5 bg-slate-700 text-white rounded-lg text-xs sm:text-sm active:bg-slate-600 sm:hover:bg-slate-600 transition-colors shrink-0"
-                    >
-                      追加
-                    </button>
+                    <input type="text" value={newCatLabel} onChange={(e) => setNewCatLabel(e.target.value)} placeholder="カテゴリ名" className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }} />
+                    <button type="button" onClick={addCategory} className="px-3 sm:px-4 py-1.5 bg-slate-700 text-white rounded-lg text-xs sm:text-sm active:bg-slate-600 sm:hover:bg-slate-600 transition-colors shrink-0">追加</button>
                   </div>
                   <div className="ml-9 sm:ml-11">
-                    <select
-                      value={newCatColor}
-                      onChange={(e) => setNewCatColor(e.target.value)}
-                      className="px-2 py-1 border border-slate-300 rounded text-xs sm:text-sm bg-white w-full sm:w-auto"
-                    >
-                      {COLOR_PRESETS.map((p) => (
-                        <option key={p.color} value={p.color}>
-                          {p.name}
-                        </option>
-                      ))}
+                    <select value={newCatColor} onChange={(e) => setNewCatColor(e.target.value)} className="px-2 py-1 border border-slate-300 rounded text-xs sm:text-sm bg-white w-full sm:w-auto">
+                      {COLOR_PRESETS.map((p) => (<option key={p.color} value={p.color}>{p.name}</option>))}
                     </select>
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await saveSettings({ categories: editCategories });
-                      setShowSettings(false);
-                    }}
-                    className="px-4 sm:px-6 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"
-                  >
-                    保存
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetToDefaults}
-                    className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors"
-                  >
-                    プリセットに戻す
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditCategories(settings?.categories ?? []);
-                      setShowSettings(false);
-                    }}
-                    className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors"
-                  >
-                    キャンセル
-                  </button>
+                  <button type="button" onClick={async () => { await saveSettings({ categories: editCategories }); setShowSettings(false); }} className="px-4 sm:px-6 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors">保存</button>
+                  <button type="button" onClick={resetToDefaults} className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors">プリセットに戻す</button>
+                  <button type="button" onClick={() => { setEditCategories(settings?.categories ?? []); setShowSettings(false); }} className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors">キャンセル</button>
                 </div>
               </div>
             )}
@@ -714,123 +683,98 @@ export default function AdminPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                日付 *
-              </label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
+              <label className="block text-sm font-medium text-slate-600 mb-1">日付 *</label>
+              <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                開始時間
-              </label>
-              <input
-                type="time"
-                value={form.time}
-                onChange={(e) => setForm({ ...form, time: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
+              <label className="block text-sm font-medium text-slate-600 mb-1">開始時間</label>
+              <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                終了時間
-              </label>
-              <input
-                type="time"
-                value={form.endTime}
-                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
+              <label className="block text-sm font-medium text-slate-600 mb-1">終了時間</label>
+              <input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                カテゴリ *
-              </label>
-              <select
-                value={form.category}
-                onChange={(e) =>
-                  setForm({ ...form, category: e.target.value })
-                }
-                required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
-              >
+              <label className="block text-sm font-medium text-slate-600 mb-1">カテゴリ *</label>
+              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400">
                 <option value="">選択してください</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.label}
-                  </option>
-                ))}
+                {categories.map((cat) => (<option key={cat.id} value={cat.id}>{cat.label}</option>))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                タイトル *
-              </label>
-              <input
-                type="text"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                required
-                placeholder="例: Mリーグ解説"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
+              <label className="block text-sm font-medium text-slate-600 mb-1">タイトル *</label>
+              <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required placeholder="例: Mリーグ解説" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">会場・場所</label>
+              <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="例: 渋谷ABEMAS STUDIO" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                詳細・備考
-              </label>
-              <textarea
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-                placeholder="放送チャンネル、会場情報など"
-                rows={2}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
+              <label className="block text-sm font-medium text-slate-600 mb-1">詳細・備考</label>
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="放送チャンネル、会場情報など" rows={2} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                関連URL
-              </label>
-              <input
-                type="url"
-                value={form.url}
-                onChange={(e) => setForm({ ...form, url: e.target.value })}
-                placeholder="https://..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
+              <label className="block text-sm font-medium text-slate-600 mb-1">関連URL</label>
+              <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://..." className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div className="md:col-span-2 flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="published"
-                checked={form.published}
-                onChange={(e) =>
-                  setForm({ ...form, published: e.target.checked })
-                }
-                className="w-4 h-4"
-              />
-              <label
-                htmlFor="published"
-                className="text-sm font-medium text-slate-600"
-              >
-                公開する
-              </label>
+              <input type="checkbox" id="published" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} className="w-4 h-4" />
+              <label htmlFor="published" className="text-sm font-medium text-slate-600">公開する</label>
             </div>
+
+            {/* 繰り返し設定（新規追加時のみ） */}
+            {!editingId && (
+              <div className="md:col-span-2 bg-slate-50 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id="repeat-enabled"
+                    checked={repeat.enabled}
+                    onChange={(e) => setRepeat({ ...repeat, enabled: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="repeat-enabled" className="text-sm font-medium text-slate-600">
+                    繰り返し登録
+                  </label>
+                </div>
+                {repeat.enabled && (
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    <select
+                      value={repeat.type}
+                      onChange={(e) => setRepeat({ ...repeat, type: e.target.value as RepeatConfig["type"] })}
+                      className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    >
+                      <option value="weekly">毎週</option>
+                      <option value="biweekly">隔週</option>
+                      <option value="monthly">毎月</option>
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={2}
+                        max={52}
+                        value={repeat.count}
+                        onChange={(e) => setRepeat({ ...repeat, count: parseInt(e.target.value) || 2 })}
+                        className="w-16 px-2 py-1.5 border border-slate-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      />
+                      <span className="text-sm text-slate-600">回分</span>
+                    </div>
+                    <p className="w-full text-xs text-slate-400">
+                      {form.date ? `${form.date} から${repeat.type === "weekly" ? "毎週" : repeat.type === "biweekly" ? "隔週" : "毎月"}${repeat.count}件を一括登録` : "日付を選択してください"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 mt-6">
             <button
               type="submit"
-              className="px-6 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors"
+              disabled={submitting}
+              className="px-6 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors disabled:opacity-50"
             >
-              {editingId ? "更新" : "追加"}
+              {submitting ? "処理中..." : editingId ? "更新" : repeat.enabled ? `${repeat.count}件を一括追加` : "追加"}
             </button>
             <button
               type="button"
@@ -838,6 +782,7 @@ export default function AdminPage() {
                 setForm({ ...EMPTY_FORM });
                 setEditingId(null);
                 setShowForm(false);
+                setRepeat({ ...DEFAULT_REPEAT });
               }}
               className="px-6 py-2 bg-slate-200 text-slate-600 rounded-lg font-medium hover:bg-slate-300 transition-colors"
             >
@@ -884,18 +829,21 @@ export default function AdminPage() {
                       <span className="text-[10px] sm:text-xs text-slate-500">{formatTimeRange(s.time, s.endTime)}</span>
                     )}
                     {!s.published && (
-                      <span className="text-[10px] sm:text-xs text-orange-500 font-medium">
-                        非公開
-                      </span>
+                      <span className="text-[10px] sm:text-xs text-orange-500 font-medium">非公開</span>
                     )}
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm sm:text-base truncate">
-                    {s.title}
-                  </h3>
-                  {s.description && (
-                    <p className="text-xs sm:text-sm text-slate-500 truncate">
-                      {s.description}
+                  <h3 className="font-bold text-slate-800 text-sm sm:text-base truncate">{s.title}</h3>
+                  {s.location && (
+                    <p className="text-[10px] sm:text-xs text-slate-400 truncate flex items-center gap-0.5">
+                      <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                      </svg>
+                      {s.location}
                     </p>
+                  )}
+                  {s.description && (
+                    <p className="text-xs sm:text-sm text-slate-500 truncate">{s.description}</p>
                   )}
                 </div>
               </div>
@@ -958,14 +906,11 @@ function ImageUploadField({
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setError("");
     setUploading(true);
-
     const formData = new FormData();
     formData.append("file", file);
     formData.append("folder", folder);
-
     try {
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -988,102 +933,33 @@ function ImageUploadField({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-2">
-        {label}
-      </label>
-
-      {/* Mode toggle */}
+      <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>
       <div className="flex gap-1 mb-3">
-        <button
-          type="button"
-          onClick={() => setMode("upload")}
-          className={`px-3 py-1 text-xs rounded-lg transition-colors ${
-            mode === "upload"
-              ? "bg-slate-800 text-white"
-              : "bg-slate-100 text-slate-500 active:bg-slate-200"
-          }`}
-        >
-          ファイルを選択
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("url")}
-          className={`px-3 py-1 text-xs rounded-lg transition-colors ${
-            mode === "url"
-              ? "bg-slate-800 text-white"
-              : "bg-slate-100 text-slate-500 active:bg-slate-200"
-          }`}
-        >
-          URLを入力
-        </button>
+        <button type="button" onClick={() => setMode("upload")} className={`px-3 py-1 text-xs rounded-lg transition-colors ${mode === "upload" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 active:bg-slate-200"}`}>ファイルを選択</button>
+        <button type="button" onClick={() => setMode("url")} className={`px-3 py-1 text-xs rounded-lg transition-colors ${mode === "url" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 active:bg-slate-200"}`}>URLを入力</button>
       </div>
-
       {mode === "upload" ? (
-        <div>
-          <label
-            className={`flex flex-col items-center justify-center w-full h-24 sm:h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
-              uploading
-                ? "border-slate-300 bg-slate-50"
-                : "border-slate-300 bg-white active:bg-slate-50 sm:hover:bg-slate-50 active:border-slate-400 sm:hover:border-slate-400"
-            }`}
-          >
-            {uploading ? (
-              <div className="text-sm text-slate-400">アップロード中...</div>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                </svg>
-                <span className="text-xs sm:text-sm text-slate-500">
-                  タップして画像を選択
-                </span>
-                <span className="text-[10px] text-slate-400 mt-0.5">
-                  JPEG / PNG / WebP / GIF（5MBまで）
-                </span>
-              </>
-            )}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              onChange={handleFileChange}
-              disabled={uploading}
-              className="hidden"
-            />
-          </label>
-        </div>
+        <label className={`flex flex-col items-center justify-center w-full h-24 sm:h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? "border-slate-300 bg-slate-50" : "border-slate-300 bg-white active:bg-slate-50 sm:hover:bg-slate-50 active:border-slate-400 sm:hover:border-slate-400"}`}>
+          {uploading ? (
+            <div className="text-sm text-slate-400">アップロード中...</div>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" /></svg>
+              <span className="text-xs sm:text-sm text-slate-500">タップして画像を選択</span>
+              <span className="text-[10px] text-slate-400 mt-0.5">JPEG / PNG / WebP / GIF（5MBまで）</span>
+            </>
+          )}
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleFileChange} disabled={uploading} className="hidden" />
+        </label>
       ) : (
-        <input
-          type="url"
-          value={value}
-          onChange={(e) => {
-            setError("");
-            onChange(e.target.value);
-          }}
-          placeholder="https://example.com/image.jpg"
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-        />
+        <input type="url" value={value} onChange={(e) => { setError(""); onChange(e.target.value); }} placeholder="https://example.com/image.jpg" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
       )}
-
-      {error && (
-        <p className="text-red-500 text-xs mt-1">{error}</p>
-      )}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
       <p className="text-[10px] sm:text-xs text-slate-400 mt-1">{hint}</p>
-
-      {/* Preview & clear */}
       {value && (
         <div className="mt-3 flex items-end gap-3">
-          <img
-            src={value}
-            alt="プレビュー"
-            className={`object-cover border border-slate-200 ${previewClass}`}
-          />
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="px-2.5 py-1 text-[10px] sm:text-xs bg-red-50 text-red-500 rounded-lg active:bg-red-100 sm:hover:bg-red-100 transition-colors shrink-0"
-          >
-            画像を削除
-          </button>
+          <img src={value} alt="プレビュー" className={`object-cover border border-slate-200 ${previewClass}`} />
+          <button type="button" onClick={() => onChange("")} className="px-2.5 py-1 text-[10px] sm:text-xs bg-red-50 text-red-500 rounded-lg active:bg-red-100 sm:hover:bg-red-100 transition-colors shrink-0">画像を削除</button>
         </div>
       )}
     </div>

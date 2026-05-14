@@ -26,6 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
     // Supabase未設定時はデフォルト値を使用
   }
 
+  const ogImageUrl = `/api/og`;
+
   return {
     title,
     description,
@@ -34,11 +36,20 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       type: "website",
       locale: "ja_JP",
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
+      images: [ogImageUrl],
     },
   };
 }
@@ -49,7 +60,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${geistSans.variable} h-full antialiased`}>
+    <html lang="ja" className={`${geistSans.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var d = localStorage.getItem('darkMode');
+                  if (d === 'true') document.documentElement.classList.add('dark');
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-slate-50">{children}</body>
     </html>
   );

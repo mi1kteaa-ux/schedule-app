@@ -12,6 +12,7 @@ export interface Schedule {
   category: string; // CategoryConfig.id
   title: string;
   description: string;
+  location: string; // 会場・場所
   url: string;
   published: boolean;
   createdAt: string;
@@ -28,6 +29,95 @@ export function formatTimeRange(time: string, endTime: string): string {
   if (!time) return "";
   if (endTime) return `${time}-${endTime}`;
   return `${time}-`;
+}
+
+/**
+ * Googleカレンダー追加用URL生成
+ */
+export function buildGoogleCalendarUrl(schedule: Schedule, siteTitle: string): string {
+  const dateClean = schedule.date.replace(/-/g, "");
+  let dates: string;
+  if (schedule.time) {
+    const startTime = schedule.time.replace(":", "") + "00";
+    if (schedule.endTime) {
+      const endTimeClean = schedule.endTime.replace(":", "") + "00";
+      dates = `${dateClean}T${startTime}/${dateClean}T${endTimeClean}`;
+    } else {
+      // 終了時間がない場合、開始から2時間後を仮設定
+      const h = parseInt(schedule.time.split(":")[0], 10);
+      const m = schedule.time.split(":")[1];
+      const endH = String(Math.min(h + 2, 23)).padStart(2, "0");
+      dates = `${dateClean}T${startTime}/${dateClean}T${endH}${m}00`;
+    }
+  } else {
+    // 終日イベント
+    const nextDate = new Date(schedule.date + "T00:00:00");
+    nextDate.setDate(nextDate.getDate() + 1);
+    const nd = nextDate.toISOString().split("T")[0].replace(/-/g, "");
+    dates = `${dateClean}/${nd}`;
+  }
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: schedule.title,
+    dates,
+    details: [schedule.description, schedule.url].filter(Boolean).join("\n"),
+    location: schedule.location || "",
+    sprop: `name:${siteTitle}`,
+  });
+
+  return `https://www.google.com/calendar/render?${params.toString()}`;
+}
+
+/**
+ * iCal (.ics) ファイルの内容を生成
+ */
+export function buildIcsContent(schedule: Schedule, siteTitle: string): string {
+  const dateClean = schedule.date.replace(/-/g, "");
+  let dtStart: string;
+  let dtEnd: string;
+
+  if (schedule.time) {
+    const startTime = schedule.time.replace(":", "") + "00";
+    dtStart = `${dateClean}T${startTime}`;
+    if (schedule.endTime) {
+      const endTimeClean = schedule.endTime.replace(":", "") + "00";
+      dtEnd = `${dateClean}T${endTimeClean}`;
+    } else {
+      const h = parseInt(schedule.time.split(":")[0], 10);
+      const m = schedule.time.split(":")[1];
+      const endH = String(Math.min(h + 2, 23)).padStart(2, "0");
+      dtEnd = `${dateClean}T${endH}${m}00`;
+    }
+  } else {
+    dtStart = dateClean;
+    const nextDate = new Date(schedule.date + "T00:00:00");
+    nextDate.setDate(nextDate.getDate() + 1);
+    dtEnd = nextDate.toISOString().split("T")[0].replace(/-/g, "");
+  }
+
+  const uid = `${schedule.id}@schedule-app`;
+  const now = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const desc = [schedule.description, schedule.url].filter(Boolean).join("\\n");
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    `PRODID:-//${siteTitle}//Schedule//JP`,
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${now}`,
+    schedule.time ? `DTSTART:${dtStart}` : `DTSTART;VALUE=DATE:${dtStart}`,
+    schedule.time ? `DTEND:${dtEnd}` : `DTEND;VALUE=DATE:${dtEnd}`,
+    `SUMMARY:${schedule.title}`,
+    desc ? `DESCRIPTION:${desc}` : "",
+    schedule.location ? `LOCATION:${schedule.location}` : "",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].filter(Boolean);
+
+  return lines.join("\r\n");
 }
 
 export type ScheduleInput = Omit<Schedule, "id" | "createdAt" | "updatedAt">;
@@ -67,9 +157,25 @@ export interface SiteSettings {
   subtitle: string;
   profileImage: string;
   headerImage: string;
+  themeColor: string; // アクセントカラー HEX
   snsLinks: SnsLinks;
   categories: CategoryConfig[];
 }
+
+export const THEME_COLOR_PRESETS = [
+  { name: "ローズ", color: "#fb7185" },
+  { name: "ブルー", color: "#3b82f6" },
+  { name: "エメラルド", color: "#10b981" },
+  { name: "パープル", color: "#8b5cf6" },
+  { name: "オレンジ", color: "#f97316" },
+  { name: "ピンク", color: "#ec4899" },
+  { name: "シアン", color: "#06b6d4" },
+  { name: "レッド", color: "#ef4444" },
+  { name: "アンバー", color: "#f59e0b" },
+  { name: "インディゴ", color: "#6366f1" },
+  { name: "スレート", color: "#64748b" },
+  { name: "ブラック", color: "#1e293b" },
+];
 
 export const DEFAULT_CATEGORIES: CategoryConfig[] = [
   { id: "commentary", label: "番組解説", color: "#3b82f6" },

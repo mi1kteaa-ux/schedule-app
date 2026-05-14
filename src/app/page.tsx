@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Schedule, SiteSettings, CategoryConfig, formatTimeRange } from "@/lib/types";
+import { Schedule, SiteSettings, CategoryConfig, formatTimeRange, buildGoogleCalendarUrl, buildIcsContent } from "@/lib/types";
 import SnsIconsBar from "@/components/SnsIcons";
 import html2canvas from "html2canvas-pro";
 import {
@@ -20,22 +20,51 @@ export default function PublicPage() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [saving, setSaving] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  const saveAsImage = useCallback(async () => {
-    if (!listRef.current) return;
+  // ダークモード初期化
+  useEffect(() => {
+    const stored = localStorage.getItem("darkMode");
+    if (stored === "true") {
+      setDarkMode(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  function toggleDarkMode() {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem("darkMode", String(next));
+    if (next) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }
+
+  // テーマカラーCSS変数を設定
+  useEffect(() => {
+    if (settings?.themeColor) {
+      document.documentElement.style.setProperty("--theme-color", settings.themeColor);
+    }
+  }, [settings?.themeColor]);
+
+  const saveAsImage = useCallback(async (ref: React.RefObject<HTMLDivElement | null>, suffix: string) => {
+    if (!ref.current) return;
     setSaving(true);
     try {
-      const canvas = await html2canvas(listRef.current, {
+      const canvas = await html2canvas(ref.current, {
         scale: 2,
-        backgroundColor: "#ffffff",
+        backgroundColor: darkMode ? "#0f172a" : "#ffffff",
         useCORS: true,
       });
       const link = document.createElement("a");
-      link.download = `schedule_${year}${String(month + 1).padStart(2, "0")}.png`;
+      link.download = `schedule_${year}${String(month + 1).padStart(2, "0")}_${suffix}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch {
@@ -43,8 +72,10 @@ export default function PublicPage() {
     } finally {
       setSaving(false);
     }
-  }, [year, month]);
+  }, [year, month, darkMode]);
+
   const categories = settings?.categories ?? [];
+  const themeColor = settings?.themeColor || "#fb7185";
 
   function getCategoryConfig(id: string): CategoryConfig | undefined {
     return categories.find((c) => c.id === id);
@@ -56,6 +87,17 @@ export default function PublicPage() {
 
   function getCategoryLabel(id: string): string {
     return getCategoryConfig(id)?.label ?? id;
+  }
+
+  function downloadIcs(schedule: Schedule) {
+    const content = buildIcsContent(schedule, settings?.title || "スケジュール");
+    const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${schedule.title}.ics`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   useEffect(() => {
@@ -111,6 +153,36 @@ export default function PublicPage() {
     return ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
   };
 
+  /** カレンダー連携ボタン */
+  function CalendarLinks({ schedule }: { schedule: Schedule }) {
+    const gcalUrl = buildGoogleCalendarUrl(schedule, settings?.title || "スケジュール");
+    return (
+      <div className="flex gap-1.5 mt-1.5">
+        <a
+          href={gcalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-[10px] sm:text-xs px-2 py-0.5 rounded-full border border-slate-300 text-slate-500 active:bg-slate-100 sm:hover:bg-slate-100 transition-colors"
+        >
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+          Google
+        </a>
+        <button
+          onClick={() => downloadIcs(schedule)}
+          className="flex items-center gap-1 text-[10px] sm:text-xs px-2 py-0.5 rounded-full border border-slate-300 text-slate-500 active:bg-slate-100 sm:hover:bg-slate-100 transition-colors"
+        >
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+          </svg>
+          iCal
+        </button>
+      </div>
+    );
+  }
+
   return (
     <main className="flex-1 max-w-4xl mx-auto w-full">
       {/* Header with optional hero image */}
@@ -136,7 +208,7 @@ export default function PublicPage() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
                 </div>
               )}
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h1 className="text-base sm:text-2xl font-bold text-slate-800 truncate">
                   {settings?.title ?? ""}
                 </h1>
@@ -146,6 +218,22 @@ export default function PublicPage() {
                   </p>
                 )}
               </div>
+              {/* Dark mode toggle */}
+              <button
+                onClick={toggleDarkMode}
+                className="p-2 rounded-lg text-slate-400 active:bg-slate-200 sm:hover:bg-slate-200 transition-colors shrink-0"
+                aria-label="ダークモード切替"
+              >
+                {darkMode ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -159,7 +247,7 @@ export default function PublicPage() {
                 className="w-14 h-14 sm:w-20 sm:h-20 rounded-full shadow-sm object-cover shrink-0"
               />
             ) : null}
-            <div className={`min-w-0 ${settings?.profileImage ? "" : "text-center w-full"}`}>
+            <div className={`min-w-0 flex-1 ${settings?.profileImage ? "" : "text-center"}`}>
               <h1 className="text-xl sm:text-3xl font-bold text-slate-800 truncate">
                 {settings?.title ?? ""}
               </h1>
@@ -169,6 +257,22 @@ export default function PublicPage() {
                 </p>
               )}
             </div>
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 rounded-lg text-slate-400 active:bg-slate-200 sm:hover:bg-slate-200 transition-colors shrink-0"
+              aria-label="ダークモード切替"
+            >
+              {darkMode ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       )}
@@ -185,9 +289,14 @@ export default function PublicPage() {
             onClick={() => setFilterCategory("all")}
             className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               filterCategory === "all"
-                ? "bg-slate-800 text-white"
+                ? ""
                 : "bg-slate-200 text-slate-600 active:bg-slate-300"
             }`}
+            style={
+              filterCategory === "all"
+                ? { backgroundColor: themeColor, color: "#fff" }
+                : undefined
+            }
           >
             すべて
           </button>
@@ -232,8 +341,9 @@ export default function PublicPage() {
           <button
             onClick={() => setViewMode("grid")}
             className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
-              viewMode === "grid" ? "bg-slate-800 text-white" : "text-slate-400 active:bg-slate-200"
+              viewMode === "grid" ? "text-white" : "text-slate-400 active:bg-slate-200"
             }`}
+            style={viewMode === "grid" ? { backgroundColor: themeColor } : undefined}
             aria-label="カレンダー表示"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -243,8 +353,9 @@ export default function PublicPage() {
           <button
             onClick={() => setViewMode("list")}
             className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
-              viewMode === "list" ? "bg-slate-800 text-white" : "text-slate-400 active:bg-slate-200"
+              viewMode === "list" ? "text-white" : "text-slate-400 active:bg-slate-200"
             }`}
+            style={viewMode === "list" ? { backgroundColor: themeColor } : undefined}
             aria-label="リスト表示"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -264,7 +375,7 @@ export default function PublicPage() {
       {/* Calendar grid view */}
       {viewMode === "grid" && (
         <>
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div ref={gridRef} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="grid grid-cols-7">
               {Array.from({ length: 7 }, (_, i) => (
                 <div
@@ -318,13 +429,14 @@ export default function PublicPage() {
                     <div
                       className={`text-[10px] sm:text-sm font-medium mb-0.5 sm:mb-1 ${
                         isToday
-                          ? "bg-slate-800 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center mx-auto text-[10px] sm:text-sm"
+                          ? "text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center mx-auto text-[10px] sm:text-sm"
                           : dayOfWeek === 6
                           ? "text-red-500 text-center"
                           : dayOfWeek === 5
                           ? "text-blue-500 text-center"
                           : "text-slate-700 text-center"
                       }`}
+                      style={isToday ? { backgroundColor: themeColor } : undefined}
                     >
                       {day}
                     </div>
@@ -348,6 +460,21 @@ export default function PublicPage() {
                 );
               })}
             </div>
+          </div>
+
+          {/* Grid image save button */}
+          <div className="mt-3 flex justify-center">
+            <button
+              onClick={() => saveAsImage(gridRef, "calendar")}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 text-white rounded-lg text-xs sm:text-sm font-medium active:opacity-80 transition-colors disabled:opacity-50"
+              style={{ backgroundColor: themeColor }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              {saving ? "保存中..." : "画像として保存"}
+            </button>
           </div>
 
           {/* Selected date detail */}
@@ -379,6 +506,15 @@ export default function PublicPage() {
                     <h4 className="font-bold text-slate-800 text-sm sm:text-base">
                       {s.title}
                     </h4>
+                    {s.location && (
+                      <p className="text-xs sm:text-sm text-slate-500 mt-0.5 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                        </svg>
+                        {s.location}
+                      </p>
+                    )}
                     {s.description && (
                       <p className="text-xs sm:text-sm text-slate-600 mt-1">
                         {s.description}
@@ -395,6 +531,7 @@ export default function PublicPage() {
                         詳細リンク →
                       </a>
                     )}
+                    <CalendarLinks schedule={s} />
                   </div>
                 ))}
               </div>
@@ -407,8 +544,8 @@ export default function PublicPage() {
       {viewMode === "list" && (
         <>
         <div ref={listRef} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          {/* List header */}
-          <div className="bg-rose-400 text-white text-center py-2 sm:py-3">
+          {/* List header with theme color */}
+          <div className="text-white text-center py-2 sm:py-3" style={{ backgroundColor: themeColor }}>
             <h2 className="text-base sm:text-xl font-bold">{getMonthName(year, month)}</h2>
           </div>
 
@@ -484,9 +621,10 @@ export default function PublicPage() {
         {/* Save as image button */}
         <div className="mt-3 flex justify-center">
           <button
-            onClick={saveAsImage}
+            onClick={() => saveAsImage(listRef, "list")}
             disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 text-white rounded-lg text-xs sm:text-sm font-medium active:opacity-80 transition-colors disabled:opacity-50"
+            style={{ backgroundColor: themeColor }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -539,6 +677,15 @@ export default function PublicPage() {
                   <h3 className="font-bold text-slate-800 text-sm sm:text-base truncate">
                     {s.title}
                   </h3>
+                  {s.location && (
+                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                      </svg>
+                      {s.location}
+                    </p>
+                  )}
                   {s.description && (
                     <p className="text-xs sm:text-sm text-slate-500 mt-0.5 line-clamp-2">
                       {s.description}
@@ -555,6 +702,7 @@ export default function PublicPage() {
                       詳細リンク →
                     </a>
                   )}
+                  <CalendarLinks schedule={s} />
                 </div>
               </div>
             ))}

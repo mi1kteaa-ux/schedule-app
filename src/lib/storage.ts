@@ -6,7 +6,7 @@ import { Schedule, ScheduleInput, SiteSettings, DEFAULT_CATEGORIES, EMPTY_SNS_LI
 export async function getSettings(): Promise<SiteSettings> {
   const { data } = await getSupabase()
     .from("site_settings")
-    .select("title, subtitle, profile_image, header_image, sns_links, categories")
+    .select("title, subtitle, profile_image, header_image, theme_color, sns_links, categories")
     .eq("id", 1)
     .single();
 
@@ -16,6 +16,7 @@ export async function getSettings(): Promise<SiteSettings> {
       subtitle: "出演・イベント予定",
       profileImage: "",
       headerImage: "",
+      themeColor: "#fb7185",
       snsLinks: { ...EMPTY_SNS_LINKS },
       categories: DEFAULT_CATEGORIES,
     };
@@ -25,6 +26,7 @@ export async function getSettings(): Promise<SiteSettings> {
     subtitle: data.subtitle,
     profileImage: data.profile_image ?? "",
     headerImage: data.header_image ?? "",
+    themeColor: data.theme_color ?? "#fb7185",
     snsLinks: data.sns_links ? { ...EMPTY_SNS_LINKS, ...data.sns_links } : { ...EMPTY_SNS_LINKS },
     categories: data.categories ?? DEFAULT_CATEGORIES,
   };
@@ -39,6 +41,7 @@ export async function updateSettings(
   if (settings.subtitle !== undefined) updateData.subtitle = settings.subtitle;
   if (settings.profileImage !== undefined) updateData.profile_image = settings.profileImage;
   if (settings.headerImage !== undefined) updateData.header_image = settings.headerImage;
+  if (settings.themeColor !== undefined) updateData.theme_color = settings.themeColor;
   if (settings.snsLinks !== undefined) updateData.sns_links = settings.snsLinks;
   if (settings.categories !== undefined) updateData.categories = settings.categories;
   await admin
@@ -58,8 +61,9 @@ function toSchedule(row: Record<string, unknown>): Schedule {
     endTime: (row.end_time as string) || "",
     category: row.category as string,
     title: row.title as string,
-    description: row.description as string,
-    url: row.url as string,
+    description: (row.description as string) || "",
+    location: (row.location as string) || "",
+    url: (row.url as string) || "",
     published: row.published as boolean,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
@@ -94,6 +98,7 @@ export async function createSchedule(input: ScheduleInput): Promise<Schedule> {
       category: input.category,
       title: input.title,
       description: input.description,
+      location: input.location,
       url: input.url,
       published: input.published,
     })
