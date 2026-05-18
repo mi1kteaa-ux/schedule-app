@@ -11,6 +11,7 @@ import {
   EMPTY_SNS_LINKS,
   SNS_DEFINITIONS,
   THEME_COLOR_PRESETS,
+  COLOR_SCHEME_PRESETS,
   formatTimeRange,
 } from "@/lib/types";
 
@@ -26,7 +27,7 @@ const EMPTY_FORM: ScheduleInput = {
   published: true,
 };
 
-type SettingsTab = "site" | "images" | "sns" | "categories";
+type SettingsTab = "site" | "design" | "images" | "sns" | "categories";
 
 /** 繰り返し設定 */
 interface RepeatConfig {
@@ -372,10 +373,11 @@ export default function AdminPage() {
       {showSettings && settings && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 sm:mb-8 overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b border-slate-200">
-            {(["site", "images", "sns", "categories"] as SettingsTab[]).map((tab) => {
+          <div className="flex border-b border-slate-200 overflow-x-auto">
+            {(["site", "design", "images", "sns", "categories"] as SettingsTab[]).map((tab) => {
               const labels: Record<SettingsTab, string> = {
                 site: "サイト情報",
+                design: "デザイン",
                 images: "画像設定",
                 sns: "SNSリンク",
                 categories: "カテゴリ設定",
@@ -397,7 +399,7 @@ export default function AdminPage() {
           </div>
 
           <div className="p-4 sm:p-6">
-            {/* Site info tab - with theme color */}
+            {/* Site info tab */}
             {settingsTab === "site" && (
               <form
                 onSubmit={async (e) => {
@@ -405,7 +407,6 @@ export default function AdminPage() {
                   await saveSettings({
                     title: settings.title,
                     subtitle: settings.subtitle,
-                    themeColor: settings.themeColor,
                   });
                   setShowSettings(false);
                 }}
@@ -439,56 +440,6 @@ export default function AdminPage() {
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
                     />
                   </div>
-
-                  {/* Theme color */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-600 mb-2">
-                      テーマカラー
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {THEME_COLOR_PRESETS.map((preset) => (
-                        <button
-                          key={preset.color}
-                          type="button"
-                          onClick={() =>
-                            setSettings({ ...settings, themeColor: preset.color })
-                          }
-                          className={`w-8 h-8 rounded-lg border-2 transition-transform ${
-                            settings.themeColor === preset.color
-                              ? "border-slate-800 scale-110"
-                              : "border-slate-200"
-                          }`}
-                          style={{ backgroundColor: preset.color }}
-                          title={preset.name}
-                        />
-                      ))}
-                      <div className="relative">
-                        <div
-                          className="w-8 h-8 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs cursor-pointer"
-                          title="カスタムカラー"
-                        >
-                          +
-                        </div>
-                        <input
-                          type="color"
-                          value={settings.themeColor || "#fb7185"}
-                          onChange={(e) =>
-                            setSettings({ ...settings, themeColor: e.target.value })
-                          }
-                          className="absolute inset-0 opacity-0 cursor-pointer w-8 h-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-5 h-5 rounded"
-                        style={{ backgroundColor: settings.themeColor || "#fb7185" }}
-                      />
-                      <span className="text-xs text-slate-500">
-                        {settings.themeColor || "#fb7185"} - ヘッダーバーやボタンに適用されます
-                      </span>
-                    </div>
-                  </div>
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button
@@ -506,6 +457,223 @@ export default function AdminPage() {
                   </button>
                 </div>
               </form>
+            )}
+
+            {/* Design tab — カラースキーム */}
+            {settingsTab === "design" && (
+              <div>
+                {/* プリセット選択 */}
+                <h4 className="text-sm font-medium text-slate-700 mb-3">カラースキーム・プリセット</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-6">
+                  {COLOR_SCHEME_PRESETS.map((preset) => {
+                    const isActive =
+                      settings.themeColor === preset.themeColor &&
+                      settings.backgroundColor === preset.backgroundColor &&
+                      settings.cardColor === preset.cardColor;
+                    return (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            themeColor: preset.themeColor,
+                            backgroundColor: preset.backgroundColor,
+                            cardColor: preset.cardColor,
+                          })
+                        }
+                        className={`rounded-xl border-2 p-2 transition-all text-left ${
+                          isActive
+                            ? "border-slate-800 ring-2 ring-slate-300 scale-[1.02]"
+                            : "border-slate-200 hover:border-slate-400"
+                        }`}
+                      >
+                        {/* ミニプレビュー */}
+                        <div
+                          className="rounded-lg h-16 sm:h-20 mb-1.5 overflow-hidden flex flex-col"
+                          style={{ background: preset.backgroundColor }}
+                        >
+                          {/* ミニヘッダー */}
+                          <div
+                            className="h-3 rounded-t-sm"
+                            style={{ background: preset.themeColor }}
+                          />
+                          {/* ミニカード */}
+                          <div className="flex-1 flex items-center justify-center p-1">
+                            <div
+                              className="rounded w-[80%] h-[70%]"
+                              style={{
+                                background: preset.cardColor,
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[10px] sm:text-xs font-medium text-slate-600 truncate">
+                          {preset.name}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 個別カラー設定 */}
+                <h4 className="text-sm font-medium text-slate-700 mb-3">個別カラー設定</h4>
+                <div className="space-y-4">
+                  {/* テーマカラー（アクセント） */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">
+                      テーマカラー（アクセント）
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {THEME_COLOR_PRESETS.map((preset) => (
+                        <button
+                          key={preset.color}
+                          type="button"
+                          onClick={() =>
+                            setSettings({ ...settings, themeColor: preset.color })
+                          }
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border-2 transition-transform ${
+                            settings.themeColor === preset.color
+                              ? "border-slate-800 scale-110"
+                              : "border-slate-200"
+                          }`}
+                          style={{ backgroundColor: preset.color }}
+                          title={preset.name}
+                        />
+                      ))}
+                      <div className="relative">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs cursor-pointer" title="カスタム">+</div>
+                        <input type="color" value={settings.themeColor || "#fb7185"} onChange={(e) => setSettings({ ...settings, themeColor: e.target.value })} className="absolute inset-0 opacity-0 cursor-pointer w-7 h-7 sm:w-8 sm:h-8" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: settings.themeColor || "#fb7185" }} />
+                      <span className="text-[10px] sm:text-xs text-slate-500">{settings.themeColor || "#fb7185"} — ボタン・ヘッダーバー等</span>
+                    </div>
+                  </div>
+
+                  {/* 背景色 */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">
+                      ページ背景色
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-lg border-2 border-slate-200 cursor-pointer" style={{ backgroundColor: settings.backgroundColor || "#f8fafc" }} />
+                        <input type="color" value={settings.backgroundColor || "#f8fafc"} onChange={(e) => setSettings({ ...settings, backgroundColor: e.target.value })} className="absolute inset-0 opacity-0 cursor-pointer w-10 h-10" />
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          value={settings.backgroundColor || "#f8fafc"}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (/^#[0-9a-fA-F]{0,6}$/.test(v)) setSettings({ ...settings, backgroundColor: v });
+                          }}
+                          className="w-24 px-2 py-1 border border-slate-300 rounded text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-400"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-0.5">ページ全体の背景</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* カード色 */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">
+                      カード・カレンダー背景色
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-lg border-2 border-slate-200 cursor-pointer" style={{ backgroundColor: settings.cardColor || "#ffffff" }} />
+                        <input type="color" value={settings.cardColor || "#ffffff"} onChange={(e) => setSettings({ ...settings, cardColor: e.target.value })} className="absolute inset-0 opacity-0 cursor-pointer w-10 h-10" />
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          value={settings.cardColor || "#ffffff"}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (/^#[0-9a-fA-F]{0,6}$/.test(v)) setSettings({ ...settings, cardColor: v });
+                          }}
+                          className="w-24 px-2 py-1 border border-slate-300 rounded text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-400"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-0.5">カレンダー・カード・リスト</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* プレビュー */}
+                <div className="mt-6 mb-4">
+                  <h4 className="text-xs sm:text-sm font-medium text-slate-600 mb-2">プレビュー</h4>
+                  <div className="rounded-xl overflow-hidden border border-slate-200" style={{ background: settings.backgroundColor || "#f8fafc" }}>
+                    <div className="h-3" style={{ background: settings.themeColor || "#fb7185" }} />
+                    <div className="p-3 sm:p-4">
+                      <div className="rounded-lg p-3 shadow-sm" style={{ background: settings.cardColor || "#ffffff" }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 rounded-full" style={{ background: settings.themeColor || "#fb7185" }} />
+                          <div className="h-3 rounded w-24" style={{ background: settings.themeColor || "#fb7185", opacity: 0.3 }} />
+                        </div>
+                        <div className="space-y-1.5">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <div className="w-8 h-3 rounded" style={{ background: settings.themeColor || "#fb7185", opacity: 0.7 }} />
+                              <div className="flex-1 h-3 rounded" style={{
+                                background: (() => {
+                                  const bg = settings.backgroundColor || "#f8fafc";
+                                  const r = parseInt(bg.slice(1, 3), 16) / 255;
+                                  const g = parseInt(bg.slice(3, 5), 16) / 255;
+                                  const b = parseInt(bg.slice(5, 7), 16) / 255;
+                                  return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 0.45 ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)";
+                                })(),
+                              }} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await saveSettings({
+                        themeColor: settings.themeColor,
+                        backgroundColor: settings.backgroundColor,
+                        cardColor: settings.cardColor,
+                      });
+                      setShowSettings(false);
+                    }}
+                    className="px-4 sm:px-6 py-2 bg-slate-800 text-white rounded-lg text-xs sm:text-sm font-medium active:bg-slate-700 sm:hover:bg-slate-700 transition-colors"
+                  >
+                    保存
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSettings({
+                        ...settings,
+                        themeColor: "#fb7185",
+                        backgroundColor: "#f8fafc",
+                        cardColor: "#ffffff",
+                      });
+                    }}
+                    className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors"
+                  >
+                    デフォルトに戻す
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettings(false)}
+                    className="px-4 sm:px-6 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs sm:text-sm font-medium active:bg-slate-300 sm:hover:bg-slate-300 transition-colors"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </div>
             )}
 
             {/* Images tab */}

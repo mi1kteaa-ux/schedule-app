@@ -37,10 +37,16 @@ function validateSettingsInput(body: Record<string, unknown>): string | null {
     }
   }
 
-  // テーマカラーのバリデーション
-  if (body.themeColor !== undefined) {
-    if (typeof body.themeColor !== "string" || !/^#[0-9a-fA-F]{6}$/.test(body.themeColor)) {
-      return "テーマカラーは#RRGGBB形式で入力してください";
+  // カラー系のバリデーション（テーマカラー・背景色・カード色）
+  for (const [field, label] of [
+    ["themeColor", "テーマカラー"],
+    ["backgroundColor", "背景色"],
+    ["cardColor", "カード色"],
+  ] as const) {
+    if (body[field] !== undefined) {
+      if (typeof body[field] !== "string" || !/^#[0-9a-fA-F]{6}$/.test(body[field] as string)) {
+        return `${label}は#RRGGBB形式で入力してください`;
+      }
     }
   }
 

@@ -12,6 +12,15 @@ import {
   getDayLabel,
 } from "@/lib/calendar";
 
+/** 背景色の明暗を判定（相対輝度） */
+function isDarkColor(hex: string): boolean {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance < 0.45;
+}
+
 export default function PublicPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -20,39 +29,30 @@ export default function PublicPage() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [saving, setSaving] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // ダークモード初期化
-  useEffect(() => {
-    const stored = localStorage.getItem("darkMode");
-    if (stored === "true") {
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
+  const bgColor = settings?.backgroundColor || "#f8fafc";
+  const cardColor = settings?.cardColor || "#ffffff";
+  const isDark = isDarkColor(bgColor);
 
-  function toggleDarkMode() {
-    const next = !darkMode;
-    setDarkMode(next);
-    localStorage.setItem("darkMode", String(next));
-    if (next) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }
-
-  // テーマカラーCSS変数を設定
+  // カスタムカラーCSS変数 + ダークモード自動適用
   useEffect(() => {
+    const root = document.documentElement;
     if (settings?.themeColor) {
-      document.documentElement.style.setProperty("--theme-color", settings.themeColor);
+      root.style.setProperty("--theme-color", settings.themeColor);
     }
-  }, [settings?.themeColor]);
+    root.style.setProperty("--custom-bg", bgColor);
+    root.style.setProperty("--custom-card", cardColor);
+    if (isDark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [settings?.themeColor, bgColor, cardColor, isDark]);
 
   const saveAsImage = useCallback(async (ref: React.RefObject<HTMLDivElement | null>, suffix: string) => {
     if (!ref.current) return;
@@ -60,7 +60,7 @@ export default function PublicPage() {
     try {
       const canvas = await html2canvas(ref.current, {
         scale: 2,
-        backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+        backgroundColor: cardColor,
         useCORS: true,
       });
       const link = document.createElement("a");
@@ -72,7 +72,7 @@ export default function PublicPage() {
     } finally {
       setSaving(false);
     }
-  }, [year, month, darkMode]);
+  }, [year, month, cardColor]);
 
   const categories = settings?.categories ?? [];
   const themeColor = settings?.themeColor || "#fb7185";
@@ -154,7 +154,7 @@ export default function PublicPage() {
   };
 
   /** カレンダー連携ボタン */
-  function CalendarLinks({ schedule }: { schedule: Schedule }) {
+  const renderCalendarLinks = useCallback((schedule: Schedule) => {
     const gcalUrl = buildGoogleCalendarUrl(schedule, settings?.title || "スケジュール");
     return (
       <div className="flex gap-1.5 mt-1.5">
@@ -181,7 +181,7 @@ export default function PublicPage() {
         </button>
       </div>
     );
-  }
+  }, [settings?.title]);
 
   return (
     <main className="flex-1 max-w-4xl mx-auto w-full">
@@ -218,22 +218,6 @@ export default function PublicPage() {
                   </p>
                 )}
               </div>
-              {/* Dark mode toggle */}
-              <button
-                onClick={toggleDarkMode}
-                className="p-2 rounded-lg text-slate-400 active:bg-slate-200 sm:hover:bg-slate-200 transition-colors shrink-0"
-                aria-label="ダークモード切替"
-              >
-                {darkMode ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-                  </svg>
-                )}
-              </button>
             </div>
           </div>
         </div>
@@ -257,22 +241,6 @@ export default function PublicPage() {
                 </p>
               )}
             </div>
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg text-slate-400 active:bg-slate-200 sm:hover:bg-slate-200 transition-colors shrink-0"
-              aria-label="ダークモード切替"
-            >
-              {darkMode ? (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-                </svg>
-              )}
-            </button>
           </div>
         </div>
       )}
@@ -531,7 +499,7 @@ export default function PublicPage() {
                         詳細リンク →
                       </a>
                     )}
-                    <CalendarLinks schedule={s} />
+                    {renderCalendarLinks(s)}
                   </div>
                 ))}
               </div>
@@ -702,7 +670,7 @@ export default function PublicPage() {
                       詳細リンク →
                     </a>
                   )}
-                  <CalendarLinks schedule={s} />
+                  {renderCalendarLinks(s)}
                 </div>
               </div>
             ))}

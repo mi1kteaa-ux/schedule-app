@@ -9,16 +9,8 @@
   --muted-light: #94a3b8;
   --surface: #f1f5f9;
   --theme-color: #fb7185;
-}
-
-.dark {
-  --background: #0f172a;
-  --foreground: #e2e8f0;
-  --card: #1e293b;
-  --card-border: #334155;
-  --muted: #94a3b8;
-  --muted-light: #64748b;
-  --surface: #1e293b;
+  --custom-bg: #f8fafc;
+  --custom-card: #ffffff;
 }
 
 @theme inline {
@@ -29,29 +21,41 @@
 }
 
 body {
-  background: var(--background);
+  background: var(--custom-bg);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.3s, color 0.3s;
 }
 
-/* Dark mode overrides */
-.dark .card {
-  background: var(--card);
-  border-color: var(--card-border);
+/* カスタムカード色の適用 */
+.custom-colors .bg-white {
+  background: var(--custom-card) !important;
 }
 
+/* Dark mode overrides — auto-applied when background is dark */
 .dark .bg-white {
-  background: var(--card) !important;
+  background: var(--custom-card) !important;
 }
 
 .dark .bg-slate-50 {
-  background: var(--surface) !important;
+  background: color-mix(in srgb, var(--custom-card) 85%, white 15%) !important;
+}
+
+.dark .bg-blue-50 {
+  background: color-mix(in srgb, var(--custom-card) 80%, #3b82f6 20%) !important;
+}
+
+.dark .bg-red-50 {
+  background: color-mix(in srgb, var(--custom-card) 92%, #ef4444 8%) !important;
+}
+
+.dark .bg-blue-50\/50 {
+  background: color-mix(in srgb, var(--custom-card) 90%, #3b82f6 10%) !important;
 }
 
 .dark .border-slate-200,
 .dark .border-slate-100 {
-  border-color: var(--card-border) !important;
+  border-color: color-mix(in srgb, var(--custom-card) 70%, white 30%) !important;
 }
 
 .dark .text-slate-800,
@@ -68,12 +72,16 @@ body {
   color: #64748b !important;
 }
 
+.dark .text-slate-300 {
+  color: #475569 !important;
+}
+
 .dark .bg-slate-100 {
-  background: #334155 !important;
+  background: color-mix(in srgb, var(--custom-card) 70%, white 30%) !important;
 }
 
 .dark .bg-slate-200 {
-  background: #475569 !important;
+  background: color-mix(in srgb, var(--custom-card) 60%, white 40%) !important;
 }
 
 .dark .shadow-sm {
@@ -83,8 +91,8 @@ body {
 .dark input,
 .dark textarea,
 .dark select {
-  background: #1e293b !important;
-  border-color: #475569 !important;
+  background: var(--custom-card) !important;
+  border-color: color-mix(in srgb, var(--custom-card) 60%, white 40%) !important;
   color: #e2e8f0 !important;
 }
 

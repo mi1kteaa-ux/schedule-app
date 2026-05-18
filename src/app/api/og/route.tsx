@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og";
-import { getSettings } from "@/lib/storage";
-import { getPublishedFutureSchedules } from "@/lib/storage";
+import { getSettings, getPublishedFutureSchedules } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +20,7 @@ export async function GET() {
 
   const themeColor = settings.themeColor || "#fb7185";
 
-  return new ImageResponse(
+  const response = new ImageResponse(
     (
       <div
         style={{
@@ -159,4 +158,12 @@ export async function GET() {
       height: 630,
     }
   );
+
+  // キャッシュヘッダー: 10分キャッシュ、1時間stale-while-revalidate
+  response.headers.set(
+    "Cache-Control",
+    "public, max-age=600, stale-while-revalidate=3600"
+  );
+
+  return response;
 }

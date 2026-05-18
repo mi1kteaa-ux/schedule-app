@@ -45,9 +45,18 @@ export function buildGoogleCalendarUrl(schedule: Schedule, siteTitle: string): s
     } else {
       // 終了時間がない場合、開始から2時間後を仮設定
       const h = parseInt(schedule.time.split(":")[0], 10);
-      const m = schedule.time.split(":")[1];
-      const endH = String(Math.min(h + 2, 23)).padStart(2, "0");
-      dates = `${dateClean}T${startTime}/${dateClean}T${endH}${m}00`;
+      const m = parseInt(schedule.time.split(":")[1], 10);
+      let endH = h + 2;
+      let endM = m;
+      let endDateClean = dateClean;
+      if (endH >= 24) {
+        endH = endH - 24;
+        const nextDate = new Date(schedule.date + "T00:00:00");
+        nextDate.setDate(nextDate.getDate() + 1);
+        endDateClean = nextDate.toISOString().split("T")[0].replace(/-/g, "");
+      }
+      const endTimeStr = `${String(endH).padStart(2, "0")}${String(endM).padStart(2, "0")}00`;
+      dates = `${dateClean}T${startTime}/${endDateClean}T${endTimeStr}`;
     }
   } else {
     // 終日イベント
@@ -85,9 +94,17 @@ export function buildIcsContent(schedule: Schedule, siteTitle: string): string {
       dtEnd = `${dateClean}T${endTimeClean}`;
     } else {
       const h = parseInt(schedule.time.split(":")[0], 10);
-      const m = schedule.time.split(":")[1];
-      const endH = String(Math.min(h + 2, 23)).padStart(2, "0");
-      dtEnd = `${dateClean}T${endH}${m}00`;
+      const m = parseInt(schedule.time.split(":")[1], 10);
+      let endH = h + 2;
+      let endM = m;
+      let endDateClean = dateClean;
+      if (endH >= 24) {
+        endH = endH - 24;
+        const nextDate = new Date(schedule.date + "T00:00:00");
+        nextDate.setDate(nextDate.getDate() + 1);
+        endDateClean = nextDate.toISOString().split("T")[0].replace(/-/g, "");
+      }
+      dtEnd = `${endDateClean}T${String(endH).padStart(2, "0")}${String(endM).padStart(2, "0")}00`;
     }
   } else {
     dtStart = dateClean;
@@ -158,9 +175,39 @@ export interface SiteSettings {
   profileImage: string;
   headerImage: string;
   themeColor: string; // アクセントカラー HEX
+  backgroundColor: string; // ページ背景色
+  cardColor: string; // カード背景色
   snsLinks: SnsLinks;
   categories: CategoryConfig[];
 }
+
+/**
+ * カラースキームプリセット
+ * themeColor: アクセントカラー
+ * backgroundColor: ページ全体の背景色
+ * cardColor: カードやカレンダーの背景色
+ */
+export interface ColorSchemePreset {
+  name: string;
+  themeColor: string;
+  backgroundColor: string;
+  cardColor: string;
+}
+
+export const COLOR_SCHEME_PRESETS: ColorSchemePreset[] = [
+  { name: "ライト（デフォルト）", themeColor: "#fb7185", backgroundColor: "#f8fafc", cardColor: "#ffffff" },
+  { name: "ピュアホワイト", themeColor: "#3b82f6", backgroundColor: "#ffffff", cardColor: "#ffffff" },
+  { name: "クールブルー", themeColor: "#3b82f6", backgroundColor: "#eff6ff", cardColor: "#ffffff" },
+  { name: "ミント", themeColor: "#10b981", backgroundColor: "#ecfdf5", cardColor: "#ffffff" },
+  { name: "ウォームサンド", themeColor: "#f59e0b", backgroundColor: "#fffbeb", cardColor: "#ffffff" },
+  { name: "サクラ", themeColor: "#ec4899", backgroundColor: "#fdf2f8", cardColor: "#ffffff" },
+  { name: "ラベンダー", themeColor: "#8b5cf6", backgroundColor: "#f5f3ff", cardColor: "#ffffff" },
+  { name: "ダーク", themeColor: "#fb7185", backgroundColor: "#0f172a", cardColor: "#1e293b" },
+  { name: "ダークブルー", themeColor: "#60a5fa", backgroundColor: "#0c1929", cardColor: "#162236" },
+  { name: "ダークグリーン", themeColor: "#34d399", backgroundColor: "#0a1a14", cardColor: "#132a21" },
+  { name: "ダークパープル", themeColor: "#a78bfa", backgroundColor: "#13091f", cardColor: "#1e1233" },
+  { name: "チャコール", themeColor: "#f97316", backgroundColor: "#18181b", cardColor: "#27272a" },
+];
 
 export const THEME_COLOR_PRESETS = [
   { name: "ローズ", color: "#fb7185" },

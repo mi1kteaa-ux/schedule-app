@@ -6,7 +6,7 @@ import { Schedule, ScheduleInput, SiteSettings, DEFAULT_CATEGORIES, EMPTY_SNS_LI
 export async function getSettings(): Promise<SiteSettings> {
   const { data } = await getSupabase()
     .from("site_settings")
-    .select("title, subtitle, profile_image, header_image, theme_color, sns_links, categories")
+    .select("title, subtitle, profile_image, header_image, theme_color, background_color, card_color, sns_links, categories")
     .eq("id", 1)
     .single();
 
@@ -17,6 +17,8 @@ export async function getSettings(): Promise<SiteSettings> {
       profileImage: "",
       headerImage: "",
       themeColor: "#fb7185",
+      backgroundColor: "#f8fafc",
+      cardColor: "#ffffff",
       snsLinks: { ...EMPTY_SNS_LINKS },
       categories: DEFAULT_CATEGORIES,
     };
@@ -27,6 +29,8 @@ export async function getSettings(): Promise<SiteSettings> {
     profileImage: data.profile_image ?? "",
     headerImage: data.header_image ?? "",
     themeColor: data.theme_color ?? "#fb7185",
+    backgroundColor: data.background_color ?? "#f8fafc",
+    cardColor: data.card_color ?? "#ffffff",
     snsLinks: data.sns_links ? { ...EMPTY_SNS_LINKS, ...data.sns_links } : { ...EMPTY_SNS_LINKS },
     categories: data.categories ?? DEFAULT_CATEGORIES,
   };
@@ -42,6 +46,8 @@ export async function updateSettings(
   if (settings.profileImage !== undefined) updateData.profile_image = settings.profileImage;
   if (settings.headerImage !== undefined) updateData.header_image = settings.headerImage;
   if (settings.themeColor !== undefined) updateData.theme_color = settings.themeColor;
+  if (settings.backgroundColor !== undefined) updateData.background_color = settings.backgroundColor;
+  if (settings.cardColor !== undefined) updateData.card_color = settings.cardColor;
   if (settings.snsLinks !== undefined) updateData.sns_links = settings.snsLinks;
   if (settings.categories !== undefined) updateData.categories = settings.categories;
   await admin
@@ -71,9 +77,11 @@ function toSchedule(row: Record<string, unknown>): Schedule {
 }
 
 export async function getPublishedFutureSchedules(): Promise<Schedule[]> {
+  const today = new Date().toISOString().split("T")[0];
   const { data } = await getSupabase()
     .from("schedules")
     .select("*")
+    .gte("date", today)
     .order("date", { ascending: true });
   return (data ?? []).map(toSchedule);
 }
@@ -109,18 +117,34 @@ export async function createSchedule(input: ScheduleInput): Promise<Schedule> {
   return toSchedule(data);
 }
 
+/** 許可されたフィールドのみ DB に送るためのホワイトリスト */
+const SCHEDULE_ALLOWED_FIELDS: Record<string, string> = {
+  date: "date",
+  time: "time",
+  endTime: "end_time",
+  category: "category",
+  title: "title",
+  description: "description",
+  location: "location",
+  url: "url",
+  published: "published",
+};
+
 export async function updateSchedule(
   id: string,
   input: Partial<ScheduleInput>
 ): Promise<Schedule | null> {
   const admin = getAdminClient();
-  // camelCase → snake_case マッピング
-  const { endTime, createdAt, updatedAt, ...rest } = input as Record<string, unknown>;
-  const updateData: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() };
-  if (endTime !== undefined) {
-    updateData.end_time = endTime;
-    delete updateData.endTime;
+
+  // ホワイトリストに基づいて camelCase → snake_case マッピング
+  const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const raw = input as Record<string, unknown>;
+  for (const [camel, snake] of Object.entries(SCHEDULE_ALLOWED_FIELDS)) {
+    if (raw[camel] !== undefined) {
+      updateData[snake] = raw[camel];
+    }
   }
+
   const { data, error } = await admin
     .from("schedules")
     .update(updateData)

@@ -54,28 +54,36 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // サーバーサイドで設定を取得してFOUC防止
+  let bgColor = "#f8fafc";
+  let cardColor = "#ffffff";
+  let isDark = false;
+  try {
+    const s = await getSettings();
+    bgColor = s.backgroundColor || bgColor;
+    cardColor = s.cardColor || cardColor;
+    // 相対輝度で明暗判定
+    const r = parseInt(bgColor.slice(1, 3), 16) / 255;
+    const g = parseInt(bgColor.slice(3, 5), 16) / 255;
+    const b = parseInt(bgColor.slice(5, 7), 16) / 255;
+    isDark = 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.45;
+  } catch {
+    // デフォルト値のまま
+  }
+
   return (
-    <html lang="ja" className={`${geistSans.variable} h-full antialiased`} suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var d = localStorage.getItem('darkMode');
-                  if (d === 'true') document.documentElement.classList.add('dark');
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
-      <body className="min-h-full flex flex-col bg-slate-50">{children}</body>
+    <html
+      lang="ja"
+      className={`${geistSans.variable} h-full antialiased${isDark ? " dark" : ""}`}
+      suppressHydrationWarning
+      style={{ ["--custom-bg" as string]: bgColor, ["--custom-card" as string]: cardColor }}
+    >
+      <body className="min-h-full flex flex-col" style={{ background: bgColor }}>{children}</body>
     </html>
   );
 }
