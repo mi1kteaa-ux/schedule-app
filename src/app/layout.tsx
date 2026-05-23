@@ -26,9 +26,15 @@ export async function generateMetadata(): Promise<Metadata> {
     // Supabase未設定時はデフォルト値を使用
   }
 
-  const ogImageUrl = `/api/og`;
+  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
+  const ogImageUrl = `${baseUrl}/api/og`;
 
   return {
+    metadataBase: new URL(baseUrl),
     title,
     description,
     openGraph: {
