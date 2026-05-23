@@ -27,33 +27,66 @@ export async function GET() {
     const monthSchedules = schedules.filter((s) => s.date.startsWith(monthPrefix));
     const schedulesByDate: Record<string, typeof schedules> = {};
     for (const s of monthSchedules) {
-      const day = s.date;
-      if (!schedulesByDate[day]) schedulesByDate[day] = [];
-      schedulesByDate[day].push(s);
+      if (!schedulesByDate[s.date]) schedulesByDate[s.date] = [];
+      schedulesByDate[s.date].push(s);
     }
 
-    // 月曜始まりの曜日ヘッダー
-    const dayHeaders = ["月", "火", "水", "木", "金", "土", "日"];
-    // 月の最初の日の曜日（月曜=0, 日曜=6）
+    // 月曜始まり曜日（月曜=0, 日曜=6）
     const firstDayRaw = new Date(currentYear, currentMonth, 1).getDay();
     const firstDayMon = (firstDayRaw + 6) % 7;
 
     const todayStr = now.toISOString().split("T")[0];
-
-    // カレンダーグリッドの各セルを生成
     const totalCells = firstDayMon + daysInMonth;
     const rows = Math.ceil(totalCells / 7);
+
+    // カレンダーの各行を事前に構築
+    const calendarRows: {
+      day: number;
+      dateStr: string;
+      isValid: boolean;
+      isToday: boolean;
+      isSat: boolean;
+      isSun: boolean;
+      titles: { title: string; color: string }[];
+      extra: number;
+    }[][] = [];
+
+    for (let r = 0; r < rows; r++) {
+      const row: typeof calendarRows[0] = [];
+      for (let c = 0; c < 7; c++) {
+        const cellIdx = r * 7 + c;
+        const day = cellIdx - firstDayMon + 1;
+        const isValid = day >= 1 && day <= daysInMonth;
+        const dateStr = isValid
+          ? `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+          : "";
+        const dayItems = isValid ? schedulesByDate[dateStr] || [] : [];
+        row.push({
+          day,
+          dateStr,
+          isValid,
+          isToday: dateStr === todayStr,
+          isSat: c === 5,
+          isSun: c === 6,
+          titles: dayItems.slice(0, 2).map((s) => ({
+            title: s.title.length > 8 ? s.title.slice(0, 7) + "…" : s.title,
+            color: catColors[s.category] || "#6b7280",
+          })),
+          extra: Math.max(0, dayItems.length - 2),
+        });
+      }
+      calendarRows.push(row);
+    }
 
     const response = new ImageResponse(
       (
         <div
           style={{
-            width: "1200px",
-            height: "630px",
+            width: 1200,
+            height: 630,
             display: "flex",
             flexDirection: "column",
-            background: "#ffffff",
-            fontFamily: "sans-serif",
+            backgroundColor: "#ffffff",
           }}
         >
           {/* Header */}
@@ -62,32 +95,51 @@ export async function GET() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "20px 36px",
-              background: themeColor,
+              padding: "20px 40px",
+              backgroundColor: themeColor,
               color: "#ffffff",
             }}
           >
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: "32px", fontWeight: 700 }}>
+              <span style={{ fontSize: 34, fontWeight: 700 }}>
                 {settings.title || "スケジュール"}
-              </div>
+              </span>
               {settings.subtitle ? (
-                <div style={{ fontSize: "16px", opacity: 0.9, marginTop: "2px" }}>
+                <span style={{ fontSize: 17, opacity: 0.9, marginTop: 2 }}>
                   {settings.subtitle}
-                </div>
+                </span>
               ) : null}
             </div>
             <div
               style={{
-                fontSize: "24px",
+                fontSize: 24,
                 fontWeight: 700,
-                background: "rgba(255,255,255,0.2)",
+                backgroundColor: "rgba(255,255,255,0.2)",
                 padding: "6px 18px",
-                borderRadius: "10px",
+                borderRadius: 10,
               }}
             >
               {monthLabel}
             </div>
+          </div>
+
+          {/* Day of week headers */}
+          <div style={{ display: "flex", padding: "0 40px" }}>
+            {["月", "火", "水", "木", "金", "土", "日"].map((d, i) => (
+              <div
+                key={d}
+                style={{
+                  width: 160,
+                  textAlign: "center",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  padding: "8px 0 4px",
+                  color: i === 5 ? "#3b82f6" : i === 6 ? "#ef4444" : "#64748b",
+                }}
+              >
+                {d}
+              </div>
+            ))}
           </div>
 
           {/* Calendar grid */}
@@ -96,211 +148,129 @@ export async function GET() {
               display: "flex",
               flexDirection: "column",
               flex: 1,
-              padding: "8px 36px 12px",
+              padding: "0 40px",
             }}
           >
-            {/* Day of week headers */}
-            <div style={{ display: "flex" }}>
-              {dayHeaders.map((d, i) => (
-                <div
-                  key={d}
-                  style={{
-                    flex: 1,
-                    textAlign: "center",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    padding: "6px 0",
-                    color: i === 5 ? "#3b82f6" : i === 6 ? "#ef4444" : "#64748b",
-                  }}
-                >
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar rows */}
-            {Array.from({ length: rows }).map((_, rowIdx) => (
-              <div key={rowIdx} style={{ display: "flex", flex: 1 }}>
-                {Array.from({ length: 7 }).map((_, colIdx) => {
-                  const cellIdx = rowIdx * 7 + colIdx;
-                  const day = cellIdx - firstDayMon + 1;
-                  const isValid = day >= 1 && day <= daysInMonth;
-                  const dateStr = isValid
-                    ? `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-                    : "";
-                  const daySchedules = isValid ? (schedulesByDate[dateStr] || []) : [];
-                  const isToday = dateStr === todayStr;
-                  const isSat = colIdx === 5;
-                  const isSun = colIdx === 6;
-
-                  return (
-                    <div
-                      key={colIdx}
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        borderTop: "1px solid #e2e8f0",
-                        borderRight: colIdx < 6 ? "1px solid #f1f5f9" : "none",
-                        padding: "2px 3px",
-                        minHeight: "0",
-                        background: isToday ? `${themeColor}10` : "transparent",
-                      }}
-                    >
-                      {isValid ? (
-                        <>
-                          <div
+            {calendarRows.map((row, rIdx) => (
+              <div key={rIdx} style={{ display: "flex", flex: 1 }}>
+                {row.map((cell, cIdx) => (
+                  <div
+                    key={cIdx}
+                    style={{
+                      width: 160,
+                      display: "flex",
+                      flexDirection: "column",
+                      borderTop: "1px solid #e2e8f0",
+                      padding: "3px 4px",
+                    }}
+                  >
+                    {cell.isValid ? (
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span
+                          style={{
+                            fontSize: 14,
+                            fontWeight: cell.isToday ? 800 : 500,
+                            color: cell.isToday
+                              ? themeColor
+                              : cell.isSun
+                              ? "#ef4444"
+                              : cell.isSat
+                              ? "#3b82f6"
+                              : "#334155",
+                            textAlign: "center",
+                          }}
+                        >
+                          {cell.day}
+                        </span>
+                        {cell.titles.map((t, tIdx) => (
+                          <span
+                            key={tIdx}
                             style={{
-                              fontSize: "13px",
-                              fontWeight: isToday ? 800 : 500,
-                              color: isToday
-                                ? themeColor
-                                : isSun
-                                ? "#ef4444"
-                                : isSat
-                                ? "#3b82f6"
-                                : "#334155",
+                              fontSize: 10,
+                              padding: "1px 4px",
+                              borderRadius: 3,
+                              color: "#ffffff",
+                              backgroundColor: t.color,
+                              marginTop: 1,
+                            }}
+                          >
+                            {t.title}
+                          </span>
+                        ))}
+                        {cell.extra > 0 ? (
+                          <span
+                            style={{
+                              fontSize: 9,
+                              color: "#94a3b8",
                               textAlign: "center",
-                              marginBottom: "1px",
+                              marginTop: 1,
                             }}
                           >
-                            {day}
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "1px",
-                            }}
-                          >
-                            {daySchedules.slice(0, 2).map((s, sIdx) => (
-                              <div
-                                key={sIdx}
-                                style={{
-                                  fontSize: "9px",
-                                  lineHeight: "12px",
-                                  padding: "1px 3px",
-                                  borderRadius: "2px",
-                                  color: "#ffffff",
-                                  background: catColors[s.category] || "#6b7280",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {s.title}
-                              </div>
-                            ))}
-                            {daySchedules.length > 2 ? (
-                              <div
-                                style={{
-                                  fontSize: "8px",
-                                  color: "#94a3b8",
-                                  textAlign: "center",
-                                }}
-                              >
-                                +{daySchedules.length - 2}
-                              </div>
-                            ) : null}
-                          </div>
-                        </>
-                      ) : null}
-                    </div>
-                  );
-                })}
+                            +{cell.extra}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
 
-          {/* Footer — upcoming list */}
+          {/* Footer */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "24px",
-              padding: "10px 36px 14px",
+              padding: "10px 40px 14px",
               borderTop: "2px solid #e2e8f0",
-              background: "#f8fafc",
+              backgroundColor: "#f8fafc",
+              gap: 20,
             }}
           >
-            <div
+            <span
               style={{
-                fontSize: "13px",
+                fontSize: 13,
                 fontWeight: 700,
                 color: themeColor,
-                whiteSpace: "nowrap",
               }}
             >
               今後の予定
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: "16px",
-                flex: 1,
-                overflow: "hidden",
-              }}
-            >
-              {monthSchedules.length === 0 ? (
-                <div style={{ fontSize: "12px", color: "#94a3b8" }}>
-                  今月の予定はありません
-                </div>
-              ) : (
-                monthSchedules.slice(0, 4).map((s, i) => {
+            </span>
+            {monthSchedules.length === 0 ? (
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                今月の予定はありません
+              </span>
+            ) : (
+              <div style={{ display: "flex", gap: 16 }}>
+                {monthSchedules.slice(0, 4).map((s, i) => {
                   const d = new Date(s.date + "T00:00:00");
+                  const shortTitle =
+                    s.title.length > 16 ? s.title.slice(0, 15) + "…" : s.title;
                   return (
                     <div
                       key={i}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        whiteSpace: "nowrap",
-                      }}
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
                     >
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          color: "#475569",
-                        }}
+                      <span
+                        style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}
                       >
                         {d.getMonth() + 1}/{d.getDate()}
-                      </div>
-                      <div
-                        style={{
-                          width: "4px",
-                          height: "4px",
-                          borderRadius: "2px",
-                          background: catColors[s.category] || "#6b7280",
-                        }}
-                      />
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          color: "#334155",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          maxWidth: "180px",
-                        }}
-                      >
-                        {s.title}
-                      </div>
+                      </span>
+                      <span style={{ fontSize: 12, color: "#334155" }}>
+                        {shortTitle}
+                      </span>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
           </div>
         </div>
       ),
-      {
-        width: 1200,
-        height: 630,
-      }
+      { width: 1200, height: 630 }
     );
 
-    // キャッシュヘッダー
     response.headers.set(
       "Cache-Control",
       "public, max-age=600, stale-while-revalidate=3600"
@@ -309,21 +279,19 @@ export async function GET() {
     return response;
   } catch (e) {
     console.error("OG image generation error:", e);
-    // フォールバック: シンプルなテキスト画像
     return new ImageResponse(
       (
         <div
           style={{
-            width: "1200px",
-            height: "630px",
+            width: 1200,
+            height: 630,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#fb7185",
+            backgroundColor: "#fb7185",
             color: "#ffffff",
-            fontSize: "48px",
+            fontSize: 48,
             fontWeight: 700,
-            fontFamily: "sans-serif",
           }}
         >
           スケジュール
