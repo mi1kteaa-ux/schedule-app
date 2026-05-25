@@ -16,10 +16,12 @@ export async function GET() {
 
     const themeColor = settings.themeColor || "#fb7185";
 
-    // カテゴリ色のマップ
+    // カテゴリマップ
     const catColors: Record<string, string> = {};
+    const catLabels: Record<string, string> = {};
     for (const cat of settings.categories ?? []) {
       catColors[cat.id] = cat.color;
+      catLabels[cat.id] = cat.label;
     }
 
     // 今月のスケジュールを日付ごとにグループ化
@@ -31,52 +33,37 @@ export async function GET() {
       schedulesByDate[s.date].push(s);
     }
 
-    // 月曜始まり曜日（月曜=0, 日曜=6）
-    const firstDayRaw = new Date(currentYear, currentMonth, 1).getDay();
-    const firstDayMon = (firstDayRaw + 6) % 7;
+    const dowNames = ["日", "月", "火", "水", "木", "金", "土"];
 
-    const todayStr = now.toISOString().split("T")[0];
-    const totalCells = firstDayMon + daysInMonth;
-    const rows = Math.ceil(totalCells / 7);
-
-    // カレンダーの各行を事前に構築
-    const calendarRows: {
+    // 縦型リストの行データを構築（1日1行、予定なしの日も含む）
+    const listRows: {
       day: number;
-      dateStr: string;
-      isValid: boolean;
-      isToday: boolean;
-      isSat: boolean;
-      isSun: boolean;
-      titles: { title: string; color: string }[];
-      extra: number;
-    }[][] = [];
+      dow: string;
+      dowIdx: number;
+      schedules: { title: string; color: string; label: string; time: string }[];
+    }[] = [];
 
-    for (let r = 0; r < rows; r++) {
-      const row: typeof calendarRows[0] = [];
-      for (let c = 0; c < 7; c++) {
-        const cellIdx = r * 7 + c;
-        const day = cellIdx - firstDayMon + 1;
-        const isValid = day >= 1 && day <= daysInMonth;
-        const dateStr = isValid
-          ? `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-          : "";
-        const dayItems = isValid ? schedulesByDate[dateStr] || [] : [];
-        row.push({
-          day,
-          dateStr,
-          isValid,
-          isToday: dateStr === todayStr,
-          isSat: c === 5,
-          isSun: c === 6,
-          titles: dayItems.slice(0, 2).map((s) => ({
-            title: s.title.length > 8 ? s.title.slice(0, 7) + "…" : s.title,
-            color: catColors[s.category] || "#6b7280",
-          })),
-          extra: Math.max(0, dayItems.length - 2),
-        });
-      }
-      calendarRows.push(row);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const dateObj = new Date(dateStr + "T00:00:00");
+      const dowIdx = dateObj.getDay();
+      const items = schedulesByDate[dateStr] || [];
+      listRows.push({
+        day: d,
+        dow: dowNames[dowIdx],
+        dowIdx,
+        schedules: items.map((s) => ({
+          title: s.title.length > 20 ? s.title.slice(0, 19) + "…" : s.title,
+          color: catColors[s.category] || "#6b7280",
+          label: catLabels[s.category] || s.category,
+          time: s.time ? (s.endTime ? `${s.time}-${s.endTime}` : `${s.time}-`) : "",
+        })),
+      });
     }
+
+    // 表示可能な行数（ヘッダー・フッターを除いた領域に収める）
+    const maxRows = 18;
+    const displayRows = listRows.slice(0, maxRows);
 
     const response = new ImageResponse(
       (
@@ -95,176 +82,158 @@ export async function GET() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "20px 40px",
+              padding: "16px 48px",
               backgroundColor: themeColor,
               color: "#ffffff",
             }}
           >
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: 34, fontWeight: 700 }}>
+              <span style={{ fontSize: 30, fontWeight: 700 }}>
                 {settings.title || "スケジュール"}
               </span>
               {settings.subtitle ? (
-                <span style={{ fontSize: 17, opacity: 0.9, marginTop: 2 }}>
+                <span style={{ fontSize: 15, opacity: 0.9, marginTop: 1 }}>
                   {settings.subtitle}
                 </span>
               ) : null}
             </div>
             <div
               style={{
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: 700,
                 backgroundColor: "rgba(255,255,255,0.2)",
-                padding: "6px 18px",
-                borderRadius: 10,
+                padding: "5px 16px",
+                borderRadius: 8,
               }}
             >
               {monthLabel}
             </div>
           </div>
 
-          {/* Day of week headers */}
-          <div style={{ display: "flex", padding: "0 40px" }}>
-            {["月", "火", "水", "木", "金", "土", "日"].map((d, i) => (
-              <div
-                key={d}
-                style={{
-                  width: 160,
-                  textAlign: "center",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  padding: "8px 0 4px",
-                  color: i === 5 ? "#3b82f6" : i === 6 ? "#ef4444" : "#64748b",
-                }}
-              >
-                {d}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar grid */}
+          {/* 縦型カレンダーリスト */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               flex: 1,
-              padding: "0 40px",
+              padding: "0 48px",
             }}
           >
-            {calendarRows.map((row, rIdx) => (
-              <div key={rIdx} style={{ display: "flex", flex: 1 }}>
-                {row.map((cell, cIdx) => (
+            {displayRows.map((row) => {
+              const isSun = row.dowIdx === 0;
+              const isSat = row.dowIdx === 6;
+              const dateColor = isSun ? "#ef4444" : isSat ? "#3b82f6" : "#334155";
+              const hasSchedule = row.schedules.length > 0;
+
+              return (
+                <div
+                  key={row.day}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    borderBottom: "1px solid #f1f5f9",
+                    padding: "3px 0",
+                    minHeight: 0,
+                  }}
+                >
+                  {/* 日付 */}
                   <div
-                    key={cIdx}
                     style={{
-                      width: 160,
                       display: "flex",
-                      flexDirection: "column",
-                      borderTop: "1px solid #e2e8f0",
-                      padding: "3px 4px",
+                      width: 90,
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: dateColor,
                     }}
                   >
-                    {cell.isValid ? (
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span
+                    <span>{row.day}</span>
+                    <span style={{ marginLeft: 2, fontWeight: 500 }}>({row.dow})</span>
+                  </div>
+
+                  {hasSchedule ? (
+                    <div style={{ display: "flex", flex: 1, gap: 12 }}>
+                      {row.schedules.slice(0, 2).map((s, sIdx) => (
+                        <div
+                          key={sIdx}
                           style={{
-                            fontSize: 14,
-                            fontWeight: cell.isToday ? 800 : 500,
-                            color: cell.isToday
-                              ? themeColor
-                              : cell.isSun
-                              ? "#ef4444"
-                              : cell.isSat
-                              ? "#3b82f6"
-                              : "#334155",
-                            textAlign: "center",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
                           }}
                         >
-                          {cell.day}
-                        </span>
-                        {cell.titles.map((t, tIdx) => (
+                          {/* カテゴリバッジ */}
                           <span
-                            key={tIdx}
                             style={{
                               fontSize: 10,
-                              padding: "1px 4px",
-                              borderRadius: 3,
+                              fontWeight: 600,
+                              padding: "1px 8px",
+                              borderRadius: 4,
                               color: "#ffffff",
-                              backgroundColor: t.color,
-                              marginTop: 1,
+                              backgroundColor: s.color,
                             }}
                           >
-                            {t.title}
+                            {s.label}
                           </span>
-                        ))}
-                        {cell.extra > 0 ? (
+                          {/* タイトル */}
                           <span
                             style={{
-                              fontSize: 9,
-                              color: "#94a3b8",
-                              textAlign: "center",
-                              marginTop: 1,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "#1e293b",
                             }}
                           >
-                            +{cell.extra}
+                            {s.title}
                           </span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+                          {/* 時間 */}
+                          {s.time ? (
+                            <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                              {s.time}
+                            </span>
+                          ) : null}
+                        </div>
+                      ))}
+                      {row.schedules.length > 2 ? (
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                          +{row.schedules.length - 2}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flex: 1 }}>
+                      <span style={{ fontSize: 12, color: "#d1d5db" }}>-</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {daysInMonth > maxRows ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  padding: "4px 0",
+                  fontSize: 12,
+                  color: "#94a3b8",
+                }}
+              >
+                ... {daysInMonth - maxRows}日分続く
               </div>
-            ))}
+            ) : null}
           </div>
 
           {/* Footer */}
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              padding: "10px 40px 14px",
-              borderTop: "2px solid #e2e8f0",
+              justifyContent: "center",
+              padding: "8px 48px",
+              borderTop: "1px solid #e2e8f0",
               backgroundColor: "#f8fafc",
-              gap: 20,
             }}
           >
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: themeColor,
-              }}
-            >
-              今後の予定
+            <span style={{ fontSize: 13, color: "#94a3b8" }}>
+              最新のスケジュールはWebサイトをチェック
             </span>
-            {monthSchedules.length === 0 ? (
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                今月の予定はありません
-              </span>
-            ) : (
-              <div style={{ display: "flex", gap: 16 }}>
-                {monthSchedules.slice(0, 4).map((s, i) => {
-                  const d = new Date(s.date + "T00:00:00");
-                  const shortTitle =
-                    s.title.length > 16 ? s.title.slice(0, 15) + "…" : s.title;
-                  return (
-                    <div
-                      key={i}
-                      style={{ display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      <span
-                        style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}
-                      >
-                        {d.getMonth() + 1}/{d.getDate()}
-                      </span>
-                      <span style={{ fontSize: 12, color: "#334155" }}>
-                        {shortTitle}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
       ),
